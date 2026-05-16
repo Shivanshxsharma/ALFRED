@@ -1,0 +1,321 @@
+# services/model.py
+import json
+from dotenv import load_dotenv
+from langchain_core import messages
+from langgraph.prebuilt import ToolNode, tools_condition
+load_dotenv()  
+from langchain_core.output_parsers import PydanticOutputParser
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langgraph.graph import StateGraph,START,END
+from pydantic import BaseModel,Field
+from langgraph.graph.message import add_messages
+from typing import TypedDict,Annotated
+from langchain_core.messages import BaseMessage,HumanMessage,SystemMessage
+from langgraph.checkpoint.mongodb import MongoDBSaver
+from ..core.config import connect_db,get_db
+from fastapi import HTTPException
+from ..core.database  import add_to_Db
+
+from langchain_core.tools import tool
+from .web_search import search_tool
+from datetime import datetime
+import traceback
+import json
+from datetime import datetime
+from ..models.models import Message_data
+
+def get_system_prompt():
+    current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return f"""You are a helpful assistant with web search access.
+
+current date and time: {current_datetime}
+
+IMPORTANT RULES:
+- For ANY question about current data, news, weather, prices — you MUST use the web_search tool
+- NEVER say you don't have access to real-time info — you have web_search, USE IT
+- When in doubt, search first, answer second
+"""
+
+
+class chatState(TypedDict):
+    messages:Annotated[list[BaseMessage],add_messages] 
+
+
+
+
+_model = None
+
+def get_model():
+    global _model
+    if _model is None:
+        _model = ChatGoogleGenerativeAI(
+            model="gemini-2.5-flash",
+            temperature=0.5,
+            streaming=True
+        )
+
+        tools = [search_tool]
+        _model = _model.bind_tools(tools=tools)
+    return _model
+
+
+
+async def chat_node(state:chatState):
+    messages=state["messages"]
+
+    non_system = [m for m in messages if not isinstance(m, SystemMessage)]
+   
+    # Always prepend system prompt
+    final_messages = [SystemMessage(content=get_system_prompt())] + non_system
+    llm=get_model()
+
+
+    response= await llm.ainvoke(final_messages)
+
+    return{'messages':[response]}
+
+
+chat_model=None
+
+def get_chatModel():
+    global chat_model
+    if(chat_model):
+     return chat_model
+    else:
+     tools=[search_tool]
+     tool_node = ToolNode(tools=tools)
+     graph=StateGraph(chatState)
+     graph.add_node("chat_node",chat_node)
+     graph.add_node("tools",tool_node)
+
+
+
+     graph.add_edge(START,"chat_node")
+     graph.add_conditional_edges("chat_node",tools_condition)
+     graph.add_edge("tools","chat_node")
+     graph.add_edge("chat_node",END)
+     checkpointer= MongoDBSaver(get_db())
+     chat_model=graph.compile(checkpointer=checkpointer)
+     return chat_model
+
+
+
+
+
+
+async def stream_response(prompt, chatId, db):
+    print(f"🚀 stream_response called: chatId={chatId}, prompt={prompt[:30]}")
+    model = get_chatModel()
+    finalres = ""
+    tool_data = Message_data()
+    CONFIG = {'configurable': {"thread_id": chatId}}
+    
+    try:
+        async for event in model.astream_events(
+            {"messages": [HumanMessage(content=prompt)]},
+            config=CONFIG,
+            version="v2",
+        ):
+            if event["event"] == "on_tool_start":
+                tool_name = event["name"]
+                tool_input = event["data"].get("input")
+                tool_data.tool_calls.append({
+                    "tool_name": tool_name,
+                    "tool_input": tool_input,
+                    "start_time": datetime.now().isoformat()
+                })
+                yield f"data: {json.dumps({'type': 'tool_start', 'tool_name': tool_name, 'tool_input': tool_input})}\n\n"
+
+            if event["event"] == "on_tool_end":
+                tool_name = event["name"]
+                tool_output = event["data"].get("output")
+                yield f"data: {json.dumps({'type': 'tool_end', 'tool_name': tool_name, 'tool_output': str(tool_output)[:200]})}\n\n"
+
+            if event["event"] == "on_chat_model_stream":
+                content = event["data"]["chunk"].content
+                if isinstance(content, list):
+                    content = "".join(
+                        part.get("text", "") if isinstance(part, dict) else str(part)
+                        for part in content
+                    )
+                if content:
+                    finalres += content
+                    yield f"data: {json.dumps({'type': 'stream', 'role': 'ai', 'content': content})}\n\n"
+
+        # save to DB only if we got a response
+        if finalres:
+            await add_to_Db(
+                False, None, chatId,
+                {
+                    "role": "ai",
+                    "content": finalres,
+                    "meta_data": tool_data.model_dump()
+                },
+                db
+            )
+
+        yield f"data: {json.dumps({'type': 'complete', 'content': finalres, 'meta_data': tool_data.model_dump()})}\n\n"
+
+    except Exception as e:
+        print(f"❌ Error in stream_response:")
+        traceback.print_exc()
+
+        error_code = None
+        error_message = str(e)
+
+        if hasattr(e, 'response') and hasattr(e.response, 'status_code'):
+            error_code = e.response.status_code
+        elif hasattr(e, 'status_code'):
+            error_code = e.status_code
+        elif hasattr(e, 'code'):
+            error_code = e.code
+        else:
+            error_code = type(e).__name__
+
+        if error_code == 429:
+            error_message = "Rate limit exceeded. Please try again in a few moments."
+
+        # save partial response if we got something before the error
+        if finalres:
+            try:
+                await add_to_Db(
+                    False, None, chatId,
+                    {
+                        "role": "ai",
+                        "content": finalres,
+                        "meta_data": tool_data.model_dump()
+                    },
+                    db
+                )
+            except Exception as db_error:
+                print(f"❌ Failed to save partial response: {db_error}")
+
+        try:
+            yield f"data: {json.dumps({'type': 'error', 'status': str(error_code), 'error_type': type(e).__name__, 'role': 'system', 'content': error_message})}\n\n"
+        except Exception:
+            pass
+
+
+async def gen_chat_title(prompt):
+    class Title(BaseModel):
+        title: str = Field(
+            description="The title of chat according to the first prompt in 2-5 words"
+        )
+
+    try:
+        model = get_model()
+
+        title_of_chat = await model.with_structured_output(
+            Title
+        ).ainvoke(
+            f"""
+            Generate a short chat title in 2-5 words 
+            based on this first user prompt.
+
+            Prompt: {prompt}
+            """
+        )
+
+        if not title_of_chat or not title_of_chat.title:
+            raise ValueError("Empty title generated")
+
+        return title_of_chat.title.strip('"')  # remove extra quotes if any
+
+    except Exception as e:
+        print("❌ Error in gen_chat_title:")
+        traceback.print_exc()
+
+        error_code = None
+        error_message = str(e)
+
+        if hasattr(e, 'response') and hasattr(e.response, 'status_code'):
+            error_code = e.response.status_code
+        elif hasattr(e, 'status_code'):
+            error_code = e.status_code
+        elif hasattr(e, 'code'):
+            error_code = e.code
+        else:
+            error_code = type(e).__name__
+
+        if error_code == 429:
+            error_message = "Rate limit exceeded while generating title."
+
+        return {
+            "type": "title_error",
+            "status": str(error_code) ,
+            "error_type": type(e).__name__,
+            "content": error_message,
+            "title": "New Chat"
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+async def test_model():
+
+  
+   model=get_chatModel()
+   CONFIG={'configurable':{"thread_id":"86"}}
+   async for event  in model.astream_events(
+         {"messages": [HumanMessage(content="what time is it in ist ?")]},
+         config=CONFIG,
+         version="v1",
+      ):
+         if event["event"] == "on_chat_model_stream":
+            content = event["data"]["chunk"].content
+            print(content)
+
+
+
+
+
+
+
+
