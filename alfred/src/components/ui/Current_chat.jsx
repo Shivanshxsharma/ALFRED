@@ -105,7 +105,7 @@ const [hoveredIndex, setHoveredIndex] = useState(null);
       onClick={() => copyToClipboard(message.content)}
       className={`p-1.5 rounded-md border transition-all duration-200
         ${copied
-          ? "border-green-500/30 text-green-400 bg-green-500/10"
+          ? "border-violet-700/30 text-violet-400 bg-violet-500/10"
           : "border-white/8 text-zinc-500 bg-zinc-900/60 hover:text-white hover:border-white/20"
         }`}
     >
@@ -118,7 +118,7 @@ const [hoveredIndex, setHoveredIndex] = useState(null);
       onClick={() => copyToClipboard(message.content)}
       className={`p-1.5 rounded-md border transition-all duration-200
         ${copied
-          ? "border-green-500/30 text-green-400 bg-green-500/10"
+          ? "border-violet-700/30 text-violet-400 bg-violet-500/10"
           : "border-white/8 text-zinc-500 bg-zinc-900/60 hover:text-white hover:border-white/20"
         }`}
     >

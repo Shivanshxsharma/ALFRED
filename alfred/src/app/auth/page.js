@@ -4,11 +4,11 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import googleLogo from './google.svg';
-import { AlertCircle, Icon, X } from 'lucide-react';
+import { AlertCircle, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { login, signup } from '@/services/authentication';
-import { user_contextStore } from '@/services/contextStrore';
 import { getGoogleAuthUrl } from '@/services/fetch_info';
+
 export default function AuthPage() {
   const router = useRouter();
   const [showError, setShowError] = useState(false);
@@ -27,591 +27,340 @@ export default function AuthPage() {
   });
 
   const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-
-
-   
-  }
-
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
   useEffect(() => {
-     if(isSignUp){
+    if (isSignUp) {
       for (const key in formData) {
-        if (formData[key].trim() === '') {
-          setAllowSubmit(false);
-          return;
-        }
-        
-    }
-
-    setAllowSubmit(true);
-
-  }else{
-    if(formData.email.trim() === '' || formData.password.trim() === ''){
-      setAllowSubmit(false);
-    }else{
+        if (formData[key].trim() === '') { setAllowSubmit(false); return; }
+      }
       setAllowSubmit(true);
-    
+    } else {
+      setAllowSubmit(formData.email.trim() !== '' && formData.password.trim() !== '');
     }
-    }
-  },[formData]);
-
+  }, [formData]);
 
   const handleGoogleAuth = () => {
-    const { url, state } = getGoogleAuthUrl()
-    sessionStorage.setItem('oauth_state', state)  // save for verification
-    window.location.href = url
-  }
+    const { url, state } = getGoogleAuthUrl();
+    sessionStorage.setItem('oauth_state', state);
+    window.location.href = url;
+  };
 
-
-
-
-
-
-
-
-
-
-const handlePasswordValidation = () => {
-    if (isSignUp && pref.current.value !== cpref.current.value) {
-      cpref.current.style.borderColor = 'red';
-      pref.current.style.borderColor = 'red';
+  const handlePasswordValidation = () => {
+    if (!pref.current || !cpref.current) return;
+    if (pref.current.value !== cpref.current.value) {
+      cpref.current.style.borderColor = '#7f1d1d';
+      pref.current.style.borderColor = '#7f1d1d';
       setShowError(true);
       setErrorMessage("Passwords do not match");
-    }else if (isSignUp && pref.current.value === cpref.current.value) {
-      cpref.current.style.borderColor = 'green';
-      pref.current.style.borderColor = 'green';
+    } else {
+      cpref.current.style.borderColor = '#4c1d95';
+      pref.current.style.borderColor = '#4c1d95';
       setShowError(false);
       setErrorMessage('');
     }
   };
-
-
-
 
   const handleEmailValidation = (e) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(e.target.value)) {
-      e.target.style.borderColor = 'red';
+      e.target.style.borderColor = '#7f1d1d';
       setShowError(true);
       setErrorMessage("Please enter a valid email address");
     } else {
-      e.target.style.borderColor = 'green';
+      e.target.style.borderColor = '#4c1d95';
       setShowError(false);
       setErrorMessage('');
     }
   };
 
-
-
-const handleSubmit = async () => {
+  const handleSubmit = async () => {
     try {
       let data;
       if (isSignUp) {
         data = await signup(formData.firstName, formData.lastName, formData.email, formData.password);
-        
       } else {
         data = await login(formData.email, formData.password);
       }
-
-      
-      console.log("Success------",data.message,"redirecting to home page");
       router.push('/chats');
-
     } catch (error) {
       const message = error.response?.data?.detail || "An unexpected error occurred";
       setErrorMessage(message);
       setShowError(true);
     }
-  }
-
-
-
+  };
 
   const toggleMode = () => {
     setIsSignUp(!isSignUp);
     setFormData({ firstName: '', lastName: '', email: '', password: '', confirmPassword: '' });
   };
 
+  const inputClass = `
+    w-full h-10 px-3 py-2 text-sm
+    bg-zinc-900/60
+    border border-zinc-800
+    rounded-md outline-none
+    text-zinc-200 placeholder-zinc-600
+    focus:border-violet-800
+    focus:ring-1 focus:ring-violet-900
+    transition-all duration-200
+  `;
 
-
-
+  const ErrorBanner = () => (
+    <AnimatePresence mode="wait">
+      {showError && errorMessage !== "" && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.2 }}
+          className="mb-4 bg-red-950/40 border border-red-900/50 rounded-lg p-3"
+        >
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-red-400 flex-1">{errorMessage}</p>
+            <button onClick={() => setShowError(false)} className="text-red-700 hover:text-red-400 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-5">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.9 }}
+    <div className="min-h-screen bg-[#09090b] flex items-center justify-center p-5">
+
+      {/* single subtle glow — only one, not two */}
+      <div
+        className="absolute pointer-events-none"
+        style={{
+          width: '500px',
+          height: '500px',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          background: 'radial-gradient(circle, rgba(109,40,217,0.06) 0%, transparent 70%)',
+          borderRadius: '50%',
+        }}
+      />
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5 }}
-        className="relative w-full max-w-4xl bg-zinc-950 rounded-2xl shadow-2xl overflow-hidden border border-zinc-900"
-        style={{ height: '550px' }}
+        transition={{ duration: 0.4 }}
+        className="relative w-full max-w-4xl rounded-2xl overflow-hidden"
+        style={{
+          height: '550px',
+          background: '#111113',
+          border: '0.5px solid rgba(109, 40, 217, 0.12)',
+          boxShadow: '0 0 40px rgba(109, 40, 217, 0.06)',
+        }}
       >
-        
-        {/* Animated Sliding Panel */}
-        <motion.div 
-          animate={{ 
-            x: isSignUp ? '0%' : '100%'
+
+        {/* Sliding Panel — blur only here */}
+        <motion.div
+          animate={{ x: isSignUp ? '0%' : '100%' }}
+          transition={{ type: 'spring', stiffness: 100, damping: 20 }}
+          className="absolute top-0 left-0 w-1/2 h-full z-50 flex items-center justify-center"
+          style={{
+            background: 'rgba(30, 16, 60, 0.75)',
+            backdropFilter: 'blur(14px)',
+            borderRight: '0.5px solid rgba(109, 40, 217, 0.15)',
           }}
-          transition={{ 
-            type: 'spring', 
-            stiffness: 100, 
-            damping: 20,
-            duration: 0.8
-          }}
-          className="absolute top-0 left-0 w-1/2 h-full z-50 flex items-center justify-center shadow-2xl"
-          style={{ background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)' }}
         >
-          <motion.div 
+          <motion.div
             key={isSignUp ? 'signup-panel' : 'login-panel'}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.4 }}
-            className="text-center  w-full h-full px-12 text-white"
+            exit={{ opacity: 0, y: -16 }}
+            transition={{ duration: 0.35 }}
+            className="text-center w-full h-full px-12 flex flex-col items-center justify-center"
           >
             {!isSignUp ? (
-              <div>
-
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="text-4xl flex items-start  justify-center h-40 font-bold mb-4 drop-shadow-lg tracking-tight"
-                  style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
-                 
-                 >
-                <motion.h2 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="text-4xl font-bold mt-4 mb-4 drop-shadow-lg tracking-tight"
-                  style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
-                >
-                </motion.h2>
-                 </motion.div>
-
-                <motion.h2 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="text-4xl font-bold mb-4 drop-shadow-lg tracking-tight"
-                  style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
-                >
-                  New Here?
-                </motion.h2>
-                <motion.p 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                  className="text-base mb-7 opacity-80 leading-relaxed font-light"
-                >
-                  Sign up and discover amazing possibilities
-                </motion.p>
+              <>
+                <h2 className="text-3xl font-semibold mb-3 text-zinc-100 tracking-tight">New here?</h2>
+                <p className="text-sm mb-8 text-zinc-400 leading-relaxed">
+                  Sign up and discover what Alfred can do
+                </p>
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
                   onClick={toggleMode}
-                  className="px-10 py-3 text-sm font-medium bg-transparent border border-zinc-300 rounded-full hover:bg-zinc-900 hover:bg-opacity-10 transition-all duration-300 tracking-wide"
+                  className="px-8 py-2.5 text-xs font-medium border border-zinc-600 rounded-full text-zinc-300 hover:border-violet-700 hover:text-violet-300 transition-all duration-300 tracking-widest"
                 >
                   SIGN UP
                 </motion.button>
-              </div>
+              </>
             ) : (
-              <div >
-                 <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="text-4xl flex items-start  justify-center h-40 font-bold mb-4 drop-shadow-lg tracking-tight"
-                  style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
-                 
-                 >
-                <motion.h2 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="text-4xl font-bold mt-4 mb-4 drop-shadow-lg tracking-tight"
-                  style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
-                >
-                </motion.h2>
-                 </motion.div>
-
-
-
-
-
-                <motion.h2 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="text-4xl font-bold mb-4 drop-shadow-lg tracking-tight"
-                  style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
-                >
-                  Already have an account
-                </motion.h2>
-                <motion.p 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                  className="text-base mb-7 opacity-80 leading-relaxed font-light"
-                >
-                  Login to continue your journey with us
-                </motion.p>
+              <>
+                <h2 className="text-3xl font-semibold mb-3 text-zinc-100 tracking-tight">Welcome back</h2>
+                <p className="text-sm mb-8 text-zinc-400 leading-relaxed">
+                  Login to continue your journey
+                </p>
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
                   onClick={toggleMode}
-                  className="px-10 py-3 text-sm font-medium bg-transparent border border-zinc-300 rounded-full hover:bg-zinc-900 hover:bg-opacity-10 transition-all duration-300 tracking-wide"
+                  className="px-8 py-2.5 text-xs font-medium border border-zinc-600 rounded-full text-zinc-300 hover:border-violet-700 hover:text-violet-300 transition-all duration-300 tracking-widest"
                 >
                   LOGIN
                 </motion.button>
-              </div>
+              </>
             )}
           </motion.div>
         </motion.div>
 
-
-
-
-
-
-
-
         {/* Login Form */}
-        <motion.div 
-          animate={{ 
-            opacity: isSignUp ? 0 : 1,
-            x: isSignUp ? -50 : 0
-          }}
-          transition={{ duration: 0.5 }}
+        <motion.div
+          animate={{ opacity: isSignUp ? 0 : 1, x: isSignUp ? -40 : 0 }}
+          transition={{ duration: 0.4 }}
           className="absolute top-0 left-0 w-1/2 h-full flex items-center justify-center"
           style={{ pointerEvents: isSignUp ? 'none' : 'auto' }}
         >
           <div className="w-4/5 max-w-sm">
-
-             <AnimatePresence mode="wait">
-            {showError&&errorMessage!== "" && (
-              <motion.div
-                initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                animate={{ 
-                  opacity: 1, 
-                  y: 0, 
-                  scale: 1,
-                  transition: {
-                    type: "spring",
-                    stiffness: 300,
-                    damping: 20
-                  }
-                }}
-                exit={{ 
-                  opacity: 0, 
-                  y: -10, 
-                  scale: 0.95,
-                  transition: { duration: 0.2 }
-                }}
-                className="mb-4 bg-red-500/20 border border-red-500/50 rounded-lg p-4 backdrop-blur-sm"
-              >
-                <div className="flex items-start gap-3">
-                  <motion.div
-                    initial={{ rotate: 0 }}
-                    animate={{ 
-                      rotate: [0, -10, 10, -10, 0],
-                      transition: { duration: 0.5 }
-                    }}
-                  >
-                    <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-                  </motion.div>
-                  
-                  <div className="flex-1">
-                    <h3 className="text-sm font-semibold text-red-200 mb-1">
-                      Invalid Credentials
-                    </h3>
-                    <p className="text-sm text-red-300/90">
-                      {errorMessage}
-                    </p>
-                  </div>
-                  
-                  <button
-                    onClick={() => setShowError(false)}
-                    className="text-red-300 hover:text-red-100 transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-
-            <motion.h2 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-3xl font-semibold text-white mb-8 text-center tracking-tight"
-            >
+            <ErrorBanner />
+            <h2 className="text-2xl font-semibold text-zinc-100 mb-7 text-center tracking-tight">
               Login
-            </motion.h2>
-            
+            </h2>
+
             <motion.input
-              whileFocus={{ scale: 1.01 }}
-              type="email"
-              name="email"
-              required
-              placeholder="Email Address"
+              whileFocus={{ scale: 1.005 }}
+              type="email" name="email"
+              placeholder="Email address"
               value={formData.email}
-              onChange={(e)=>{handleInputChange(e); handleEmailValidation(e);}}
-              className="w-full h-10 px-3 py-2 text-sm mb-4 bg-transparent border border-zinc-900 rounded-md outline-none text-white placeholder-zinc-600 focus:border-zinc-700 focus:ring-1 focus:ring-zinc-700 transition-all duration-200"
+              onChange={(e) => { handleInputChange(e); handleEmailValidation(e); }}
+              className={`${inputClass} mb-3`}
             />
-            
+
             <motion.input
-              whileFocus={{ scale: 1.01 }}
-              type="password"
-              name="password"
-              required
+              whileFocus={{ scale: 1.005 }}
+              type="password" name="password"
               placeholder="Password"
               value={formData.password}
               onChange={handleInputChange}
-              className="w-full h-10 px-3 py-2 text-sm mb-4 bg-transparent border border-zinc-900 rounded-md outline-none text-white placeholder-zinc-600 focus:border-zinc-700 focus:ring-1 focus:ring-zinc-700 transition-all duration-200"
+              className={`${inputClass} mb-4`}
             />
 
+            {/* Google */}
             <motion.button
-            onClick={handleGoogleAuth}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}  
-              style={{ 
-                background: 'linear-gradient(135deg, #475569 0%, #334155 100%)',
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.3)'
-              }}
-              className="px-0 py-0 mb-4 text-sm font-medium border border-zinc-900 rounded-full hover:bg-zinc-900 hover:bg-opacity-10 transition-all duration-300 tracking-wide"
-               ><Button variant='icon'><img src={googleLogo.src} alt="google" className="w-4 h-4" /></Button></motion.button>
+              onClick={handleGoogleAuth}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              className="mb-4 border border-zinc-800 rounded-full bg-zinc-900/60 hover:border-zinc-700 transition-all duration-200"
+            >
+              <Button variant="icon">
+                <img src={googleLogo.src} alt="google" className="w-4 h-4" />
+              </Button>
+            </motion.button>
 
             <motion.button
-             type='submit'
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
               onClick={handleSubmit}
-              className="w-full h-10  text-sm font-medium text-white rounded-md mb-4 tracking-wide transition-all duration-300"
-              style={{ 
-                background: 'linear-gradient(135deg, #475569 0%, #334155 100%)',
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.3)',
-                pointerEvents: !allowSubmit || showError ? 'none' : 'auto',
-                opacity: !allowSubmit || showError ? 0.6 : 1
-
+              className="w-full h-10 text-xs font-medium text-zinc-200 rounded-md mb-4 tracking-widest transition-all duration-300"
+              style={{
+                background: allowSubmit && !showError
+                  ? 'linear-gradient(135deg, #5b21b6 0%, #4c1d95 100%)'
+                  : '#1c1c24',
+                border: '0.5px solid rgba(109,40,217,0.3)',
+                opacity: allowSubmit && !showError ? 1 : 0.5,
+                pointerEvents: allowSubmit && !showError ? 'auto' : 'none',
               }}
-              onMouseEnter={(e) => {
-                e.target.style.background = 'linear-gradient(135deg, #52667a 0%, #3d4f63 100%)';
-                e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.4)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.background = 'linear-gradient(135deg, #475569 0%, #334155 100%)';
-                e.target.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.3)';
-              }}
-
-              
-              
             >
               LOGIN
             </motion.button>
-            
-            <p className="text-center text-sm text-zinc-600">
-              <motion.a 
-                whileHover={{ scale: 1.05 }}
-                href="#" 
-                className="font-medium hover:text-zinc-500 transition-colors"
-                style={{ color: '#71717a' }}
-              >
+
+            <p className="text-center text-xs">
+              <a href="#" className="text-zinc-600 hover:text-violet-500 transition-colors">
                 Forgot password?
-              </motion.a>
+              </a>
             </p>
           </div>
         </motion.div>
 
-
-
-
-
-
-
-
-
-
         {/* Sign Up Form */}
-        <motion.div 
-          animate={{ 
-            opacity: !isSignUp ? 0 : 1,
-            x: !isSignUp ? 50 : 0
-          }}
-          transition={{ duration: 0.5 }}
+        <motion.div
+          animate={{ opacity: !isSignUp ? 0 : 1, x: !isSignUp ? 40 : 0 }}
+          transition={{ duration: 0.4 }}
           className="absolute top-0 right-0 w-1/2 h-full flex items-center justify-center"
           style={{ pointerEvents: !isSignUp ? 'none' : 'auto' }}
         >
           <div className="w-4/5 max-w-sm">
-
-                       <AnimatePresence mode="wait">
-            {showError&&errorMessage!== "" && (
-              <motion.div
-                initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                animate={{ 
-                  opacity: 1, 
-                  y: 0, 
-                  scale: 1,
-                  transition: {
-                    type: "spring",
-                    stiffness: 300,
-                    damping: 20
-                  }
-                }}
-                exit={{ 
-                  opacity: 0, 
-                  y: -10, 
-                  scale: 0.95,
-                  transition: { duration: 0.2 }
-                }}
-                className="mb-4 bg-red-500/20 border border-red-500/50 rounded-lg p-4 backdrop-blur-sm"
-              >
-                <div className="flex items-start gap-3">
-                  <motion.div
-                    initial={{ rotate: 0 }}
-                    animate={{ 
-                      rotate: [0, -10, 10, -10, 0],
-                      transition: { duration: 0.5 }
-                    }}
-                  >
-                    <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-                  </motion.div>
-                  
-                  <div className="flex-1">
-                    <h3 className="text-sm font-semibold text-red-200 mb-1">
-                      Invalid Credentials
-                    </h3>
-                    <p className="text-sm text-red-300/90">
-                      {errorMessage}
-                    </p>
-                  </div>
-                  
-                  <button
-                    onClick={() => setShowError(false)}
-                    className="text-red-300 hover:text-red-100 transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-
-            <motion.h2 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-3xl font-semibold text-white mb-6 text-center tracking-tight"
-            >
+            <ErrorBanner />
+            <h2 className="text-2xl font-semibold text-zinc-100 mb-6 text-center tracking-tight">
               Sign Up
-            </motion.h2>
-            
+            </h2>
+
             <div className="flex gap-3 mb-3">
-              <motion.input
-                whileFocus={{ scale: 1.01 }}
-                type="text"
-                name="firstName"
-                placeholder="First Name"
+              <input
+                type="text" name="firstName" placeholder="First name"
                 value={formData.firstName}
                 onChange={handleInputChange}
-                className="w-1/2 h-10 px-3 py-2 text-sm bg-transparent border border-zinc-900 rounded-md outline-none text-white placeholder-zinc-600 focus:border-zinc-700 focus:ring-1 focus:ring-zinc-700 transition-all duration-200"
+                className="w-1/2 h-10 px-3 py-2 text-sm bg-zinc-900/60 border border-zinc-800 rounded-md outline-none text-zinc-200 placeholder-zinc-600 focus:border-violet-800 focus:ring-1 focus:ring-violet-900 transition-all duration-200"
               />
-              <motion.input
-                whileFocus={{ scale: 1.01 }}
-                type="text"
-                name="lastName"
-                placeholder="Last Name"
+              <input
+                type="text" name="lastName" placeholder="Last name"
                 value={formData.lastName}
                 onChange={handleInputChange}
-                className="w-1/2 h-10 px-3 py-2 text-sm bg-transparent border border-zinc-900 rounded-md outline-none text-white placeholder-zinc-600 focus:border-zinc-700 focus:ring-1 focus:ring-zinc-700 transition-all duration-200"
+                className="w-1/2 h-10 px-3 py-2 text-sm bg-zinc-900/60 border border-zinc-800 rounded-md outline-none text-zinc-200 placeholder-zinc-600 focus:border-violet-800 focus:ring-1 focus:ring-violet-900 transition-all duration-200"
               />
             </div>
-            
-            <motion.input
-              whileFocus={{ scale: 1.01 }}
-              type="email"
-              name="email"
-              placeholder="Email Address"
+
+            <input
+              type="email" name="email" placeholder="Email address"
               value={formData.email}
-              onChange={(e)=>{handleInputChange(e); handleEmailValidation(e);}}
-              className="w-full h-10 px-3 py-2 text-sm mb-3 bg-transparent border border-zinc-900 rounded-md outline-none text-white placeholder-zinc-600 focus:border-zinc-700 focus:ring-1 focus:ring-zinc-700 transition-all duration-200"
+              onChange={(e) => { handleInputChange(e); handleEmailValidation(e); }}
+              className={`${inputClass} mb-3`}
             />
-            
-            <motion.input
-            ref={pref}
-              whileFocus={{ scale: 1.01 }}
-              type="password"
-              name="password"
-              placeholder="Password"
+
+            <input
+              ref={pref}
+              type="password" name="password" placeholder="Password"
               value={formData.password}
-              onChange={
-                (e) => {
-                  handleInputChange(e);
-                  handlePasswordValidation();
-                }
-              }
-              className="w-full h-10 px-3 py-2 text-sm mb-3 bg-transparent border border-zinc-900 rounded-md outline-none text-white placeholder-zinc-600 focus:border-zinc-700 focus:ring-1 focus:ring-zinc-700 transition-all duration-200"
+              onChange={(e) => { handleInputChange(e); handlePasswordValidation(); }}
+              className={`${inputClass} mb-3`}
             />
-            
-            <motion.input
-            ref={cpref}
-              whileFocus={{ scale: 1.01 }}
-              type="password"
-              name="confirmPassword"
-              placeholder="Confirm Password"
+
+            <input
+              ref={cpref}
+              type="password" name="confirmPassword" placeholder="Confirm password"
               value={formData.confirmPassword}
-              onChange={
-                (e) => {
-                  handleInputChange(e);
-                  handlePasswordValidation();
-                }
-              }
-
-              className="w-full h-10 px-3 py-2 text-sm mb-5 bg-transparent border border-zinc-900 rounded-md outline-none text-white placeholder-zinc-600 focus:border-zinc-700 focus:ring-1 focus:ring-zinc-700 transition-all duration-200"
+              onChange={(e) => { handleInputChange(e); handlePasswordValidation(); }}
+              className={`${inputClass} mb-5`}
             />
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}  
-              style={{ 
-                background: 'linear-gradient(135deg, #475569 0%, #334155 100%)',
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.3)'
-              }}
-              className="px-0 py-0 mb-4 text-sm font-medium border border-zinc-900 rounded-full hover:bg-zinc-900 hover:bg-opacity-10 transition-all duration-300 tracking-wide"
-               ><Button variant='icon'><img src={googleLogo.src} alt="google" className="w-4 h-4" /></Button></motion.button>
 
-            
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              onClick={handleGoogleAuth}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              className="mb-4 border border-zinc-800 rounded-full bg-zinc-900/60 hover:border-zinc-700 transition-all duration-200"
+            >
+              <Button variant="icon">
+                <img src={googleLogo.src} alt="google" className="w-4 h-4" />
+              </Button>
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
               onClick={handleSubmit}
-              className="w-full h-10 text-sm font-medium text-white rounded-md tracking-wide transition-all duration-300"
-              style={{ 
-                background: 'linear-gradient(135deg, #475569 0%, #334155 100%)',
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.3)',
-                pointerEvents: !allowSubmit || showError ? 'none' : 'auto',
-                opacity: !allowSubmit || showError ? 0.6 : 1
+              className="w-full h-10 text-xs font-medium text-zinc-200 rounded-md tracking-widest transition-all duration-300"
+              style={{
+                background: allowSubmit && !showError
+                  ? 'linear-gradient(135deg, #5b21b6 0%, #4c1d95 100%)'
+                  : '#1c1c24',
+                border: '0.5px solid rgba(109,40,217,0.3)',
+                opacity: allowSubmit && !showError ? 1 : 0.5,
+                pointerEvents: allowSubmit && !showError ? 'auto' : 'none',
               }}
-              onMouseEnter={(e) => {
-                e.target.style.background = 'linear-gradient(135deg, #52667a 0%, #3d4f63 100%)';
-                e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.4)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.background = 'linear-gradient(135deg, #475569 0%, #334155 100%)';
-                e.target.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.3)';
-              }}
-              
             >
               SIGN UP
             </motion.button>
           </div>
         </motion.div>
+
       </motion.div>
     </div>
   );

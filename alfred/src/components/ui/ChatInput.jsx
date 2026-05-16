@@ -39,7 +39,7 @@ const {submitHandler}
   }
 
   return (
-    <div   className="w-full min-h-full absolute bottom-0    flex  flex-col items-center  border-2 bg-sidebar border-b-slate-600 rounded-2xl   p-1">
+    <div   className="w-full min-h-full absolute bottom-0    flex  flex-col items-center  border-2 bg-sidebar border-b-violet-900/80 rounded-2xl   p-1">
       <div    className="flex mb-10 sm:mb-14  items-end w-[98%]  sm:min-h-11">  
         {/* ass positioned items do not interact with each means therir change in height wont cause other elements to change their height so we use mb-17 not absolute -17 */}
         <textarea
