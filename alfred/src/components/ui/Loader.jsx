@@ -1,4 +1,5 @@
 import React from 'react';
+
 export default function Loader() {
   return (
     <>
@@ -6,9 +7,9 @@ export default function Loader() {
         .loader {
           width: 70px;
           height: 26px;
-          background: #475569;
+          background: #4c1d95;
           border-radius: 50px;
-          --c: no-repeat radial-gradient(farthest-side, #fff 92%, #0000);
+          --c: no-repeat radial-gradient(farthest-side, #c4b5fd 92%, #0000);
           --s: 18px 18px;
           -webkit-mask:
             var(--c) left 4px top 50%,
@@ -20,13 +21,13 @@ export default function Loader() {
           animation: l1 1.5s infinite;
         }
         @keyframes l1 {
-          0%     { -webkit-mask-size: 0 0,      0 0,      0 0,      auto }
-          16.67% { -webkit-mask-size: 18px 18px, 0 0,      0 0,      auto }
-          33.33% { -webkit-mask-size: 18px 18px, 18px 18px, 0 0,      auto }
+          0%     { -webkit-mask-size: 0 0,       0 0,       0 0,       auto }
+          16.67% { -webkit-mask-size: 18px 18px, 0 0,       0 0,       auto }
+          33.33% { -webkit-mask-size: 18px 18px, 18px 18px, 0 0,       auto }
           50%    { -webkit-mask-size: 18px 18px, 18px 18px, 18px 18px, auto }
-          66.67% { -webkit-mask-size: 0 0,      18px 18px, 18px 18px, auto }
-          83.33% { -webkit-mask-size: 0 0,      0 0,       18px 18px, auto }
-          100%   { -webkit-mask-size: 0 0,      0 0,       0 0,       auto }
+          66.67% { -webkit-mask-size: 0 0,       18px 18px, 18px 18px, auto }
+          83.33% { -webkit-mask-size: 0 0,       0 0,       18px 18px, auto }
+          100%   { -webkit-mask-size: 0 0,       0 0,       0 0,       auto }
         }
       `}</style>
       <div className="loader" />

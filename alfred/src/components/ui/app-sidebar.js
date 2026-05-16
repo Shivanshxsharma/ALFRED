@@ -160,8 +160,8 @@ useEffect(() => {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <a href="/" className="">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg  bg-linear-to-r from-slate-600 to-slate-700 text-sidebar-primary-foreground">
-                  <span className="text-lg font-bold">A</span>
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg border-2 border-violet-700/30 bg-violet-900/50 text-sidebar-primary-foreground">
+                  <span className="text-lg font-bold">{first_name.charAt(0).toUpperCase()}</span>
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
                   <span className="font-semibold">{first_name+" "+last_name}</span>

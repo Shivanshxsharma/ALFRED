@@ -70,7 +70,7 @@ const ChatBubble = ({ index, lastindex, role, content, meta_data }) => {
     return () => controls.stop();
   }, [content, isStreaming, role, isLastMessage]);
 
-  const bubbleClass = role === "human" ? 'bg-slate-700' : 'bg-transparent';
+  const bubbleClass = role === "human" ? "bg-violet-600/15 backdrop-blur-md border border-violet-500/30 rounded-tr-none rounded-2xl" : 'bg-transparent';
 
   return (
     <div className={`p-2.5 md:p-4 my-2 rounded-full md:rounded-2xl max-w-full ${bubbleClass}`}>
