@@ -5,6 +5,7 @@ import {LucideArrowUpFromDot,DiamondPlusIcon,tie, ArrowUpCircleIcon, SquareArrow
 import { useChatActions } from "@/services/contextStrore";
 import { cn } from "@/lib/utils";
 import { all } from "axios";
+// import Submit from "../Submit";
 const MAX_HEIGHT = 200
 
 export default function ChatInput({router}) {
