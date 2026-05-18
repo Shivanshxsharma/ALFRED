@@ -330,7 +330,7 @@ export default function AuthPage() {
               onChange={(e) => { handleInputChange(e); handlePasswordValidation(); }}
               className={`${inputClass} mb-5`}
             />
-
+            
             <motion.button
               onClick={handleGoogleAuth}
               whileHover={{ scale: 1.03 }}

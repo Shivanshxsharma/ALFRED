@@ -73,7 +73,7 @@ const ChatBubble = ({ index, lastindex, role, content, meta_data }) => {
   const bubbleClass = role === "human" ? "bg-violet-600/15 backdrop-blur-md border border-violet-500/30 rounded-tr-none rounded-2xl" : 'bg-transparent';
 
   return (
-    <div className={`p-2.5 md:p-4 my-2 rounded-full md:rounded-2xl max-w-full ${bubbleClass}`}>
+    <div className={`p-2.5 md:p-4 my-2 rounded-full md:rounded-2xl md:rounded-tr-none max-w-full ${bubbleClass}`}>
       <div className="prose prose-invert prose-sm max-w-none text-sm sm:text-[16px] text-white">
         {role === "ai" ? (
           <>
