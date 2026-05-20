@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useRef } from "react"
+import React, { useState, useRef, use } from "react"
 import { CircleArrowUp } from "lucide-react"
 import { useChatActions, usechatStore } from "@/services/contextStrore"
 import { cn } from "@/lib/utils"
@@ -68,7 +68,7 @@ export default function ChatInput({ router }) {
 
 
         <UploadButton  onFile={(file) => {
-          get().usechatStore.addFile(file);
+          useChatActions.getState().addFile(file);
           console.log(file)
           
           }} />
