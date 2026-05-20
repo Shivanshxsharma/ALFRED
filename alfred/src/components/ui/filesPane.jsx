@@ -171,25 +171,9 @@ const SAMPLE_FILES = [
 ]
 
 export function FileUploadScrollArea({ files: externalFiles, onRemove: externalRemove }) {
-  const [files, setFiles] = useState(
-    (externalFiles ?? SAMPLE_FILES).map(f => ({ ...f, progress: f.progress ?? 0 }))
-  )
+const files = externalFiles ?? SAMPLE_FILES 
 
-  useEffect(() => {
-    if (externalFiles) return
-    const intervals = files.map((file, i) =>
-      setInterval(() => {
-        setFiles(prev =>
-          prev.map(f =>
-            f.id === file.id && f.progress < 100
-              ? { ...f, progress: Math.min(f.progress + Math.random() * 9 + 3, 100) }
-              : f
-          )
-        )
-      }, 280 + i * 100)
-    )
-    return () => intervals.forEach(clearInterval)
-  }, [])
+
 
   const handleRemove = (id) => {
     if (externalRemove) externalRemove(id)

@@ -15,7 +15,7 @@ export default function UploadButton({ onFile }) {
       <input
         ref={inputRef}
         type="file"
-        accept=".pdf,.docx,.xlsx,.pptx,.txt,.md,.py,.js,.ts,.json,.csv"
+        accept=".pdf,.docx,.xlsx,.pptx,.txt,.md,.py,.js,.ts,.json,.csv,.jsx,.tsx,.html,.css,.png,.jpg,.jpeg,.gif,.webp,.mp4,.mov,.avi,.mp3,.wav,.zip,.rar,.7z"
         className="hidden"
         onChange={handleChange}
       />

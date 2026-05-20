@@ -18,9 +18,14 @@ export const usechatStore = create(
       addFile: (file) => set((state) => {
         state.files_array.push({
           name: file.name,
-          size: file.size,
-          type: file.type,
+          id:file.lastModified,
+          progress:0
         });
+      }),
+
+      removeFile: (fileId) => set((state) => {
+        state.files_array = state.files_array.filter(file => file.id !== fileId);
+        console.log(state.files_array);
       }),
       
 
