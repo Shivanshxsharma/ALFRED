@@ -8,6 +8,7 @@ import VioletButton from "./VioletButton"
 import UploadButton from "./UploadButton"
 import FileUploadScrollArea from "./filesPane"
 import { useShallow } from "zustand/shallow"
+import { progress } from "framer-motion"
 
 const MAX_HEIGHT = 200
 
@@ -16,6 +17,7 @@ export default function ChatInput({ router }) {
 
 
   const files_array=usechatStore(useShallow((state) => state.files_array));
+
   const { submitHandler } = useChatActions()
   const [allowInput, setAllowInput] = useState(false)
   const textareaRef = useRef(null)
@@ -41,10 +43,10 @@ export default function ChatInput({ router }) {
 
   return (
     <div className="w-full min-h-full absolute bottom-0 flex flex-col items-center border-2 bg-sidebar border-b-violet-900/80 rounded-2xl p-1">
-      <div className=" w-full   h-30 bg-transparent mb-2" >
-      <FileUploadScrollArea  files={files_array}  />
-      </div> 
-      {/* Textarea grows upward; bottom toolbar is absolute so mb pushes textarea above it
+      {files_array.length>0 &&<div className= {` w-full   h-30 bg-transparent mb-2 `} >
+      <FileUploadScrollArea  files={files_array} onRemove={usechatStore.getState().actions.removeFile}  />
+      </div> }
+      {/* Textarea grows upward; bottom toolbar is absolute so mb pushes textarea above it} */}
       <div className="flex mb-10 sm:mb-14 items-end w-[98%] sm:min-h-11">
         <textarea
           ref={textareaRef}
@@ -68,8 +70,9 @@ export default function ChatInput({ router }) {
 
 
         <UploadButton  onFile={(file) => {
-          useChatActions.getState().addFile(file);
-          console.log(file)
+          usechatStore.getState().actions.addFile(file);
+          console.log(file);
+          console.log(usechatStore.getState().files_array);
           
           }} />
 
