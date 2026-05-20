@@ -68,7 +68,7 @@ export default function ChatInput({ router }) {
 
 
         <UploadButton  onFile={(file) => {
-          
+          get().usechatStore.addFile(file);
           console.log(file)
           
           }} />
