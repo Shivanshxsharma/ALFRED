@@ -26,13 +26,28 @@ export const usechatStore = create(
       removeFile: (fileId) => set((state) => {
         state.files_array = state.files_array.filter(file => file.id !== fileId);
         console.log(state.files_array);
-      }),
-      
+            }),
+
+      updateFileProgress: (id, progress) =>
+        set((state) => ({
+          files_array: state.files_array.map((f) =>
+            f.id === id ? { ...f, progress } : f
+          ),
+        })),
+
+      setFileError: (id) =>
+        set((state) => ({
+          files_array: state.files_array.map((f) =>
+            f.id === id ? { ...f, error: true } : f
+          ),
+        })),
 
 
 
 
-      setisStreaming: (bool) => set((state) => {
+
+
+            setisStreaming: (bool) => set((state) => {
         state.isStreaming = bool;
       }),
       setcurr_chatid: (chatId) => set((state) => {
