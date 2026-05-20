@@ -15,9 +15,16 @@ export const usechatStore = create(
     isStreaming: false,
 
     actions: {
-
-
+      addFile: (file) => set((state) => {
+        state.files_array.push({
+          name: file.name,
+          size: file.size,
+          type: file.type,
+        });
+      }),
       
+
+
 
 
       setisStreaming: (bool) => set((state) => {
