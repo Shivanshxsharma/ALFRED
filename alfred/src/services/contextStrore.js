@@ -11,9 +11,13 @@ export const usechatStore = create(
     curr_chatid:null,
     Curr_Conversation_array: [],
     tool_array:[],
+    files_array:[],
     isStreaming: false,
 
     actions: {
+
+
+      
 
 
       setisStreaming: (bool) => set((state) => {
