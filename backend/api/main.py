@@ -1,7 +1,8 @@
 import traceback
 from urllib import response
+import io
 from bson import ObjectId
-from fastapi import FastAPI, Depends,HTTPException, status,WebSocket,WebSocketDisconnect,Response,Request
+from fastapi import FastAPI, Depends,HTTPException, status,WebSocket,WebSocketDisconnect,Response,Request,UploadFile, File
 from fastapi.responses import StreamingResponse
 from datetime import datetime
 from ..models.models import authenticate_User, chats, new_Chat,create_User,add_to_Chat,delete_chat,Messages,prompt_req,OAuthCallbackRequest
@@ -284,8 +285,13 @@ async def google_auth_endpoint(req:OAuthCallbackRequest, res:Response,db=Depends
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error during Google authentication: {e}"
         )
-        
+    
 
+
+@app.post("/upload")
+@app.post("/upload")
+async def upload_file(request: Request):
+    form = await request.form()
 
 
 

@@ -9,6 +9,7 @@ import UploadButton from "./UploadButton"
 import FileUploadScrollArea from "./filesPane"
 import { useShallow } from "zustand/shallow"
 import { progress } from "framer-motion"
+import { uploadFile } from "@/services/fileUpload"
 
 const MAX_HEIGHT = 200
 
@@ -43,9 +44,14 @@ export default function ChatInput({ router }) {
 
   return (
     <div className="w-full min-h-full absolute bottom-0 flex flex-col items-center border-2 bg-sidebar border-b-violet-900/80 rounded-2xl p-1">
-      {files_array.length>0 &&<div className= {` w-full   h-30 bg-transparent mb-2 `} >
-      <FileUploadScrollArea  files={files_array} onRemove={usechatStore.getState().actions.removeFile}  />
-      </div> }
+      {files_array.length > 0 && (
+        <div className="w-full h-30 bg-transparent mb-2">
+          <FileUploadScrollArea
+            files={files_array}
+            onRemove={usechatStore.getState().actions.removeFile}
+          />
+        </div>
+      )}
       {/* Textarea grows upward; bottom toolbar is absolute so mb pushes textarea above it} */}
       <div className="flex mb-10 sm:mb-14 items-end w-[98%] sm:min-h-11">
         <textarea
@@ -67,27 +73,16 @@ export default function ChatInput({ router }) {
 
       {/* Bottom toolbar */}
       <div className="rounded-xl w-[98%] h-9 sm:h-12 absolute bottom-1 flex justify-between items-center bg-background p-0.5 sm:p-1.5">
-
-
-<UploadButton
-  onFile={(file) => {
-
-    
-    addFile(file) 
-
-    uploadFile(file, (percent) => {
-      updateFileProgress(file.id, percent)
-    })
-    .then((res) => {
-      updateFileProgress(file.id, 100)
-      
-    })
-    .catch(() => {
-      setFileError(file.id) 
-    })
-  }}
-/>
-
+        <UploadButton
+          onFile={(rawFile) => {
+            const id = addFile(rawFile)   
+            uploadFile({ raw: rawFile }, (percent) => {
+              updateFileProgress(id, percent)
+            })
+              .then(() => updateFileProgress(id, 100))
+              .catch(() => setFileError(id))
+          }}
+        />
 
         <button
           disabled={!allowInput}
@@ -99,7 +94,6 @@ export default function ChatInput({ router }) {
         >
           <CircleArrowUp />
         </button>
-
       </div>
     </div>
   )

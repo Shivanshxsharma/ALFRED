@@ -1,6 +1,8 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
+import { usechatStore } from "@/services/contextStrore"
+import { useShallow } from "zustand/shallow"
 
 const FILE_TYPE_MAP = {
   pdf: "PDF", doc: "DOC", docx: "DOCX",
@@ -170,14 +172,13 @@ const SAMPLE_FILES = [
 
 ]
 
-export function FileUploadScrollArea({ files: externalFiles, onRemove: externalRemove }) {
-const files = externalFiles ?? SAMPLE_FILES 
+export function FileUploadScrollArea({ files:externalFiles, onRemove: externalRemove }) {
 
-
+const files = externalFiles || SAMPLE_FILES 
 
   const handleRemove = (id) => {
     if (externalRemove) externalRemove(id)
-    else setFiles(prev => prev.filter(f => f.id !== id))
+    
   }
 
   if (!files.length) return null
