@@ -289,10 +289,13 @@ async def google_auth_endpoint(req:OAuthCallbackRequest, res:Response,db=Depends
 
 
 @app.post("/upload")
-@app.post("/upload")
-async def upload_file(request: Request):
-    form = await request.form()
+async def upload_file(file: UploadFile = File(...)):
+    contents = await file.read()          
+    file_like = io.BytesIO(contents)      
 
+   
+    ext = file.filename.split(".")[-1].lower()
+    
 
 
 
