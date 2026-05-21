@@ -17,9 +17,10 @@ const MAX_HEIGHT = 200
 
 
 export default function ChatInput({ router }) {
-    const { addFile, updateFileProgress, setFileError } = usechatStore.getState().actions;
+    const { addFile, updateFileProgress, setFileError ,toggleTool } = usechatStore.getState().actions;
 
   const files_array=usechatStore(useShallow((state) => state.files_array));
+  const toggleTools = usechatStore(useShallow((state) => state.toggleTools));
 
   const { submitHandler } = useChatActions()
   const [allowInput, setAllowInput] = useState(false)
@@ -87,7 +88,7 @@ export default function ChatInput({ router }) {
           }}
         />
 
-        <ToolsContextMenu />
+        <ToolsContextMenu  toggleTools={toggleTools}  toggleTool={toggleTool}/>
         </div>
 
 

@@ -37,9 +37,13 @@ IMPORTANT RULES:
 """
 
 
+class tool_enabled(TypedDict):
+    web_search_enabled:bool
+
+
 class chatState(TypedDict):
     messages:Annotated[list[BaseMessage],add_messages] 
-    tools:dict
+    tools:tool_enabled
 
 
 
@@ -55,28 +59,48 @@ def get_model():
             streaming=True
         )
 
-        tools = [search_tool]
-        _model = _model.bind_tools(tools=tools)
+        
+        _model = _model
     return _model
 
 
-
-async def chat_node(state:chatState):
-    messages=state["messages"]
-
+async def chat_node(state: chatState):
+    messages = state["messages"]
+    tools_state = state.get("tools", {})
+    
+    TOOL_MAP = {
+        "web_search_enabled": search_tool,
+    }
+    
+    
+    active_tools = [TOOL_MAP[key] for key, enabled in tools_state.items() if enabled and key in TOOL_MAP]
+    
     non_system = [m for m in messages if not isinstance(m, SystemMessage)]
-   
-    # Always prepend system prompt
     final_messages = [SystemMessage(content=get_system_prompt())] + non_system
-    llm=get_model()
-
-
-    response= await llm.ainvoke(final_messages)
-
-    return{'messages':[response]}
+    
+    llm = get_model()
+    
+    
+    if active_tools:
+        llm = llm.bind_tools(active_tools)
+    
+    response = await llm.ainvoke(final_messages)
+    return {'messages': [response]}
 
 
 chat_model=None
+
+
+
+def smart_tools_condition(state: chatState):
+    tools_state = state.get("tools") or {}
+    any_enabled = any(tools_state.values())
+    
+    if not any_enabled:
+        return END
+    return tools_condition(state)
+
+
 
 def get_chatModel():
     global chat_model
@@ -85,14 +109,16 @@ def get_chatModel():
     else:
      tools=[search_tool]
      tool_node = ToolNode(tools=tools)
+
      graph=StateGraph(chatState)
+
      graph.add_node("chat_node",chat_node)
      graph.add_node("tools",tool_node)
 
 
 
      graph.add_edge(START,"chat_node")
-     graph.add_conditional_edges("chat_node",tools_condition)
+     graph.add_conditional_edges("chat_node",smart_tools_condition)
      graph.add_edge("tools","chat_node")
      graph.add_edge("chat_node",END)
      checkpointer= MongoDBSaver(get_db())
@@ -104,8 +130,9 @@ def get_chatModel():
 
 
 
-async def stream_response(prompt, chatId, db):
+async def stream_response(prompt, chatId, db,metadata):
     print(f"🚀 stream_response called: chatId={chatId}, prompt={prompt[:30]}")
+    toggled_tools:tool_enabled = metadata.get("toggled_tools", {})
     model = get_chatModel()
     finalres = ""
     tool_data = Message_data()
@@ -113,7 +140,7 @@ async def stream_response(prompt, chatId, db):
     
     try:
         async for event in model.astream_events(
-            {"messages": [HumanMessage(content=prompt)]},
+            {"messages": [HumanMessage(content=prompt)], "tools": toggled_tools},
             config=CONFIG,
             version="v2",
         ):

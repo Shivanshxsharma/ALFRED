@@ -16,6 +16,7 @@ class User(BaseModel):
 
 
 class Message_data(BaseModel):
+     toggled_tools: Optional[dict] = Field({}, description="Dictionary of toggled tools and their states")
      tool_calls: Optional[List[dict]] = Field([], description="List of tool calls with details")
      reasoning_steps: Optional[List[str]] = Field(None, description="Reasoning steps taken by the model")
      error_info: Optional[dict] = Field(None, description="Details of any errors encountered")
