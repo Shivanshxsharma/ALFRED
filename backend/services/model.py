@@ -120,7 +120,7 @@ def get_chatModel():
      graph.add_edge(START,"chat_node")
      graph.add_conditional_edges("chat_node",smart_tools_condition)
      graph.add_edge("tools","chat_node")
-     graph.add_edge("chat_node",END)
+    #  graph.add_edge("chat_node",END)
      checkpointer= MongoDBSaver(get_db())
      chat_model=graph.compile(checkpointer=checkpointer)
      return chat_model
@@ -132,7 +132,9 @@ def get_chatModel():
 
 async def stream_response(prompt, chatId, db,metadata):
     print(f"🚀 stream_response called: chatId={chatId}, prompt={prompt[:30]}")
-    toggled_tools:tool_enabled = metadata.get("toggled_tools", {})
+    toggled_tools:tool_enabled = metadata.toggled_tools if metadata and metadata.toggled_tools else {}
+    print(f"METADATA RECEIVED: {metadata}")        # what's coming in
+    print(f"TOGGLED TOOLS: {toggled_tools}")   
     model = get_chatModel()
     finalres = ""
     tool_data = Message_data()
