@@ -9,6 +9,7 @@ import { useSearchParams ,useRouter, useParams } from 'next/navigation'
 import axios from 'axios'
 import { useChatActions, usechatStore, user_contextStore } from '@/services/contextStrore'
 import {fetchEventSource} from '@microsoft/fetch-event-source'
+import { DragDropZone } from './DragDropZone'
 
 
 
@@ -32,7 +33,7 @@ user_contextStore.getState().actions.fetchUserInfo(router);
     // <Skeleton/>
     // :
 
-
+    <DragDropZone>
     <div className='w-full h-full  absolute  right-0 top-0'>
       <div className='mt-3 ml-2 absolute z-2  '>
         <SidebarTrigger/>
@@ -49,6 +50,8 @@ user_contextStore.getState().actions.fetchUserInfo(router);
 
       </div>
   </div>
+
+  </DragDropZone>
     
   )
 }

@@ -1,16 +1,15 @@
-// services/uploadFile.js
+
 
 export function uploadFile(file, onProgress) {
   return new Promise((resolve, reject) => {
     const formData = new FormData()
-    formData.append("file", file.raw) // file.raw is the actual File object
-
+    formData.append("file", file.raw) 
     const xhr = new XMLHttpRequest()
 
     xhr.upload.addEventListener("progress", (e) => {
       if (e.lengthComputable) {
         const percent = Math.round((e.loaded / e.total) * 100)
-        onProgress(percent) // fires repeatedly as chunks go out
+        onProgress(percent) 
       }
     })
 

@@ -15,32 +15,41 @@ export const usechatStore = create(
     isStreaming: false,
 
     actions: {
-      addFile: (file) => set((state) => {
-        state.files_array.push({
-          name: file.name,
-          id:file.lastModified,
-          progress:0
+
+
+
+
+      addFile: (file) => {
+        const id = uuidv4();
+        set((state) => {
+          state.files_array.push({
+            name: file.name,
+            id,
+            progress: 0,
+            raw: file,
+          });
         });
-      }),
+        return id;
+      },
 
       removeFile: (fileId) => set((state) => {
         state.files_array = state.files_array.filter(file => file.id !== fileId);
         console.log(state.files_array);
             }),
 
-      updateFileProgress: (id, progress) =>
-        set((state) => ({
-          files_array: state.files_array.map((f) =>
-            f.id === id ? { ...f, progress } : f
-          ),
-        })),
 
-      setFileError: (id) =>
-        set((state) => ({
-          files_array: state.files_array.map((f) =>
-            f.id === id ? { ...f, error: true } : f
-          ),
-        })),
+updateFileProgress: (id, progress) => {
+  const updated = get().files_array.map(f => 
+    f.id === id ? { ...f, progress } : f
+  )
+  set({ files_array: updated })
+},
+
+
+setFileError: (id) => set((state) => {
+  const file = state.files_array.find(f => f.id === id)
+  if (file) file.error = true
+}),
 
 
 
