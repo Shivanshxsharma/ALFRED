@@ -39,6 +39,7 @@ IMPORTANT RULES:
 
 class chatState(TypedDict):
     messages:Annotated[list[BaseMessage],add_messages] 
+    tools:dict
 
 
 

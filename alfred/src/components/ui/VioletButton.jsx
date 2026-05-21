@@ -14,7 +14,7 @@ export default function VioletButton({
   const [active, setActive]   = useState(false)
 
   const scale        = size / 52
-  const collapsedPx  = size
+  const collapsedPx  = size-1;
   const expandedPx   = Math.round(140 * scale)
   const heightPx     = size
   const fontSizeEm   = (2  * scale).toFixed(2)
