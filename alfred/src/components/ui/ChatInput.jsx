@@ -10,6 +10,8 @@ import FileUploadScrollArea from "./filesPane"
 import { useShallow } from "zustand/shallow"
 import { progress } from "framer-motion"
 import { uploadFile } from "@/services/fileUpload"
+import { Toggle } from "radix-ui"
+import ToolsContextMenu from "./ToggleTools"
 
 const MAX_HEIGHT = 200
 
@@ -73,6 +75,7 @@ export default function ChatInput({ router }) {
 
       {/* Bottom toolbar */}
       <div className="rounded-xl w-[98%] h-9 sm:h-12 absolute bottom-1 flex justify-between items-center bg-background p-0.5 sm:p-1.5">
+        <div className="w-[20%] h-full gap-3 flex items-center">
         <UploadButton
           onFile={(rawFile) => {
             const id = addFile(rawFile)   
@@ -83,6 +86,10 @@ export default function ChatInput({ router }) {
               .catch(() => setFileError(id))
           }}
         />
+
+        <ToolsContextMenu />
+        </div>
+
 
         <button
           disabled={!allowInput}

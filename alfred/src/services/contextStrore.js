@@ -13,6 +13,9 @@ export const usechatStore = create(
     tool_array:[],
     files_array:[],
     isStreaming: false,
+    toggleTools:{
+      "web_search":false,
+    },
 
     actions: {
 
