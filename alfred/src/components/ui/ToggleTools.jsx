@@ -1,33 +1,40 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { SlidersHorizontal } from "lucide-react"
+import { Globe2, SlidersHorizontal } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
+import { usechatStore } from "@/services/contextStrore"
 
-const TOOLS = [
-  { id: "search",       icon: "ti-search",     label: "Web search",     enabled: true  },
-  { id: "code",         icon: "ti-terminal-2", label: "Code execution", enabled: true  },
-  { id: "image",        icon: "ti-photo",      label: "Image analysis", enabled: false },
-  { id: "files",        icon: "ti-file",       label: "File access",    enabled: false },
-  { id: "integrations", icon: "ti-plug",       label: "Integrations",   enabled: true  },
-]
+
+
+
+// const TOOLS = [
+//   { id: "search",       icon: "ti-search",     label: "Web search",     enabled: true  },
+// ]
 
 const SIZE       = 30
 const EXPANDED   = 120
 const SIGN_PAD   = 10
 const TEXT_PAD   = 12
 
-export default function ToolsContextMenu() {
+export default function ToolsContextMenu({toggleTools,toggleTool}) {
   const [open,    setOpen]    = useState(false)
   const [hovered, setHovered] = useState(false)
   const [active,  setActive]  = useState(false)
-  const [tools,   setTools]   = useState(TOOLS)
   const menuRef    = useRef(null)
   const triggerRef = useRef(null)
+  const tools = toggleTools;
+  
+const toggle = (id) => {
+  toggleTool(id)
+  // read fresh state after update
+//   const updated = usechatStore.getState().toggleTools.find(t => t.id === id)
+//   console.log(updated.enabled) // ← correct value
+}
+    
 
-  const toggle = (id) =>
-    setTools(prev => prev.map(t => t.id === id ? { ...t, enabled: !t.enabled } : t))
+    
 
   useEffect(() => {
     const handler = (e) => {
@@ -69,7 +76,7 @@ export default function ToolsContextMenu() {
                 role="menuitem"
               >
                 <div className="flex items-center gap-2">
-                  <i className={cn("ti", tool.icon, "text-[15px] text-zinc-400")} aria-hidden="true" />
+                  <tool.icon size={16} className="text-violet-400" />
                   <span className="text-[13px] text-zinc-200 select-none">{tool.label}</span>
                 </div>
                 <Switch

@@ -84,11 +84,12 @@ async def stream_endpoint(req: add_to_Chat, db=Depends(get_db)):
         chatId = req.chatId
         is_new_chat = req.is_new_chat
         user_id = req.user_id
+        metadata = req.prompt.meta_data
         
-        await add_to_Db(is_new_chat, user_id, chatId, {"role": "human", "content": query}, db)
+        await add_to_Db(is_new_chat, user_id, chatId, {"role": "human", "content": query, "metadata": metadata}, db)
         
         return StreamingResponse(
-            stream_response(query, chatId, db),
+            stream_response(query, chatId, db, metadata),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",

@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from "uuid"
 import { streamChatResponse } from './streaming';
 import { use } from 'react';
 import { fetchOldMessages, fetchUserInfo } from './fetch_info';
+import { Globe2 } from "lucide-react";
 
 export const usechatStore = create(
   immer((set,get) => ({
@@ -13,13 +14,19 @@ export const usechatStore = create(
     tool_array:[],
     files_array:[],
     isStreaming: false,
-    toggleTools:{
-      "web_search":false,
-    },
+
+    toggleTools:[
+      { id: "web_search_enabled",       icon: Globe2,     label: "Web search",     enabled: false  },
+    ],
 
     actions: {
 
 
+      toggleTool: (id) =>
+        set((state) => {
+          const tool = state.toggleTools.find(t => t.id === id);
+          if (tool) tool.enabled = !tool.enabled;
+        }),
 
 
       addFile: (file) => {
@@ -155,6 +162,12 @@ appendStreamingChunk: (chunk) =>
             { 
               "role":"human",
               "content":prompt,
+              "meta_data": {
+                toggled_tools: get().toggleTools.reduce((acc, tool) => {
+                  acc[tool.id] = tool.enabled;
+                  return acc;
+                }, {})
+              }
             },
             (chunk) => get().actions.appendStreamingChunk(chunk), // Use callbacks
             (isStreaming) => get().actions.setisStreaming(isStreaming),
