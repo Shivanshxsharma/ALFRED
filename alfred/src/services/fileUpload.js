@@ -15,7 +15,8 @@ export function uploadFile(file, onProgress) {
 
     xhr.addEventListener("load", () => {
       if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(JSON.parse(xhr.responseText))
+        const res = JSON.parse(xhr.responseText)
+        resolve(res)
       } else {
         reject(new Error(`Upload failed: ${xhr.status}`))
       }

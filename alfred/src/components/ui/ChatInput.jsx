@@ -17,7 +17,7 @@ const MAX_HEIGHT = 200
 
 
 export default function ChatInput({ router }) {
-    const { addFile, updateFileProgress, setFileError ,toggleTool } = usechatStore.getState().actions;
+    const { addFile, updateFileProgress, setFileError ,toggleTool ,setFileServerData } = usechatStore.getState().actions;
 
   const files_array=usechatStore(useShallow((state) => state.files_array));
   const toggleTools = usechatStore(useShallow((state) => state.toggleTools));
@@ -83,7 +83,10 @@ export default function ChatInput({ router }) {
             uploadFile({ raw: rawFile }, (percent) => {
               updateFileProgress(id, percent)
             })
-              .then(() => updateFileProgress(id, 100))
+              .then((res) => {
+                updateFileProgress(id, 100)
+                setFileServerData(id, res)
+              })
               .catch(() => setFileError(id))
           }}
         />

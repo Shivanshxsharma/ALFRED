@@ -1,8 +1,19 @@
+import os
 import traceback
 from urllib import response
 import io
 from bson import ObjectId
+
+import os
+import shutil
+from pathlib import Path
 from fastapi import FastAPI, Depends,HTTPException, status,WebSocket,WebSocketDisconnect,Response,Request,UploadFile, File
+from uuid import uuid4
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+
 from fastapi.responses import StreamingResponse
 from datetime import datetime
 from ..models.models import authenticate_User, chats, new_Chat,create_User,add_to_Chat,delete_chat,Messages,prompt_req,OAuthCallbackRequest
@@ -291,15 +302,28 @@ async def google_auth_endpoint(req:OAuthCallbackRequest, res:Response,db=Depends
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
-    contents = await file.read()          
-    file_like = io.BytesIO(contents)      
-
-   
-    ext = file.filename.split(".")[-1].lower()
+ try:
+    ext = Path(file.filename).suffix
+    stored_as = f"{uuid4()}{ext}"
+    path = os.path.join(UPLOAD_DIR, stored_as)
+    
+    with open(path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
     
 
-
-
+    print(f"File uploaded successfully: {file.filename} stored as {stored_as}")
+    return {
+        "original_name": file.filename,
+        "path": path,
+    }
+ except Exception as e:
+    print(f"Error uploading file: {e}")
+    raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error uploading file: {e}"
+        )
+    
+    
 
 
 
