@@ -28,7 +28,7 @@ export const usechatStore = create(
           if (tool) tool.enabled = !tool.enabled;
         }),
 
-
+        
       addFile: (file) => {
         const id = uuidv4();
         set((state) => {
@@ -37,36 +37,54 @@ export const usechatStore = create(
             id,
             progress: 0,
             raw: file,
+            path:"",
+            error: false,
           });
         });
         return id;
       },
+       
+      setFileServerData: (id, serverData) => set((state) => {
+       const file = state.files_array.find(f => f.id === id)
+      if (file) {
+        file.path = serverData.path
+        }
+      }),
 
-      removeFile: (fileId) => set((state) => {
+
+
+
+       removeFile: (fileId) => set((state) => {
         state.files_array = state.files_array.filter(file => file.id !== fileId);
         console.log(state.files_array);
-            }),
+        }),
 
+        updateFileProgress: (id, progress) => {
+          const updated = get().files_array.map(f => 
+            f.id === id ? { ...f, progress } : f
+          )
+          set({ files_array: updated })
+        },
 
-updateFileProgress: (id, progress) => {
-  const updated = get().files_array.map(f => 
-    f.id === id ? { ...f, progress } : f
-  )
-  set({ files_array: updated })
-},
-
-
-setFileError: (id) => set((state) => {
-  const file = state.files_array.find(f => f.id === id)
-  if (file) file.error = true
-}),
-
+        setFileError: (id) => set((state) => {
+          const file = state.files_array.find(f => f.id === id)
+          if (file) file.error = true
+        }),
 
 
 
 
 
-            setisStreaming: (bool) => set((state) => {
+
+
+
+
+
+
+
+
+
+        setisStreaming: (bool) => set((state) => {
         state.isStreaming = bool;
       }),
       setcurr_chatid: (chatId) => set((state) => {
@@ -163,6 +181,7 @@ appendStreamingChunk: (chunk) =>
               "role":"human",
               "content":prompt,
               "meta_data": {
+                files_uploaded: get().files_array.filter(f => !f.error).map(f => ({ name: f.name, path: f.path })),
                 toggled_tools: get().toggleTools.reduce((acc, tool) => {
                   acc[tool.id] = tool.enabled;
                   return acc;

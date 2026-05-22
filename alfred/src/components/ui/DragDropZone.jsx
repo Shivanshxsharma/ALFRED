@@ -46,15 +46,21 @@ const handleDrop = (e) => {
 
   const droppedFiles = Array.from(e.dataTransfer.files)
   droppedFiles.forEach(rawFile => {
-    const id = usechatStore.getState().actions.addFile(rawFile)  // ← get id from store
+    const id = usechatStore.getState().actions.addFile(rawFile)  
 
     uploadFile({ raw: rawFile }, (percent) => {
       usechatStore.getState().actions.updateFileProgress(id, percent)
     })
-    .then(() => usechatStore.getState().actions.updateFileProgress(id, 100))
-    .catch(() => usechatStore.getState().actions.setFileError(id))
-  })
-}
+    .then((res) => {
+        usechatStore.getState().actions.updateFileProgress(id, 100)
+        usechatStore.getState().actions.setFileServerData(id, res)
+    })
+    .catch(() => {
+        console.error("Error uploading file:", rawFile.name)
+        console.error("err message:", err.message)
+        usechatStore.getState().actions.setFileError(id)
+    })
+})}
 
 
 
