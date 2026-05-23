@@ -27,7 +27,9 @@ from ..models.models import Message_data
 
 def get_system_prompt():
     current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    return f"""You are a helpful assistant with web search access.
+    
+    # f-string only for dynamic parts
+    base = f"""You are a helpful assistant with web search access.
 
 current date and time: {current_datetime}
 
@@ -36,6 +38,39 @@ IMPORTANT RULES:
 - NEVER say you don't have access to real-time info — you have web_search, USE IT
 - When in doubt, search first, answer second
 """
+
+    # plain string for anything with { } — no f-string
+    static_rules = """
+DIAGRAMS & FLOWCHARTS:
+When creating flowcharts use mermaid code blocks.
+RULES:
+- Decision nodes MUST use curly braces: C{Is valid?}
+- Process nodes MUST use square brackets: B[Do something]
+- Node IDs MUST start with a letter, never a number
+- No parentheses () in labels — use hyphens
+- No special chars in labels except hyphens
+
+CHARTS & GRAPHS:
+When asked to plot data or create a chart/graph, respond with a JSON code block:
+```chart
+{
+    "type": "line",
+    "title": "Sine Wave",
+    "xLabel": "x",
+    "yLabel": "y",
+    "xKey": "x",
+    "data": [
+        { "x": 0, "y": 0 },
+        { "x": 1, "y": 0.84 }
+    ],
+    "lines": [{ "key": "y", "color": "#7c3aed" }]
+}
+```
+Supported types: line, bar, area, pie, scatter
+For multiple series include multiple keys in lines/bars array.
+"""
+
+    return base + static_rules
 
 
 class tool_enabled(TypedDict):
