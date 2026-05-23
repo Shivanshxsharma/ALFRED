@@ -18,6 +18,7 @@ from ..core.database  import add_to_Db
 
 from langchain_core.tools import tool
 from .web_search import search_tool
+from .file_rag_system import read_file
 from datetime import datetime
 import traceback
 import json
@@ -40,10 +41,16 @@ IMPORTANT RULES:
 class tool_enabled(TypedDict):
     web_search_enabled:bool
 
+class file_uploaded(TypedDict):
+    name:str
+    path:str
+
+
 
 class chatState(TypedDict):
     messages:Annotated[list[BaseMessage],add_messages] 
     tools:tool_enabled
+    files_uploaded:list[file_uploaded]
 
 
 
@@ -64,22 +71,40 @@ def get_model():
     return _model
 
 
+
+
+
+
+
 async def chat_node(state: chatState):
     messages = state["messages"]
     tools_state = state.get("tools", {})
+    files_uploaded = state.get("files_uploaded", [])
     
     TOOL_MAP = {
         "web_search_enabled": search_tool,
     }
     
-    
     active_tools = [TOOL_MAP[key] for key, enabled in tools_state.items() if enabled and key in TOOL_MAP]
-    
+    if files_uploaded:
+        active_tools.append(read_file)
+
     non_system = [m for m in messages if not isinstance(m, SystemMessage)]
-    final_messages = [SystemMessage(content=get_system_prompt())] + non_system
+    
+    file_context = ""
+    if files_uploaded:
+     file_list = "\n".join(f"- {f['name']} at path {f['path']}" for f in files_uploaded)
+     print(file_list)
+     file_context = f"""
+     
+     CRITICAL: The user has uploaded these files:
+     {file_list}
+
+     You MUST call the read_file tool with the EXACT path shown above before answering ANY question about the file contents. Do NOT say you cannot access files. The read_file tool gives you direct access.
+     """
+    final_messages = [SystemMessage(content=get_system_prompt() + file_context)] + non_system
     
     llm = get_model()
-    
     
     if active_tools:
         llm = llm.bind_tools(active_tools)
@@ -88,7 +113,18 @@ async def chat_node(state: chatState):
     return {'messages': [response]}
 
 
+
+
+
+
+
+
 chat_model=None
+
+
+
+
+
 
 
 
@@ -107,7 +143,7 @@ def get_chatModel():
     if(chat_model):
      return chat_model
     else:
-     tools=[search_tool]
+     tools=[search_tool,read_file]
      tool_node = ToolNode(tools=tools)
 
      graph=StateGraph(chatState)
@@ -131,10 +167,11 @@ def get_chatModel():
 
 
 async def stream_response(prompt, chatId, db,metadata):
-    print(f"🚀 stream_response called: chatId={chatId}, prompt={prompt[:30]}")
+    
+    
     toggled_tools:tool_enabled = metadata.toggled_tools if metadata and metadata.toggled_tools else {}
-    print(f"METADATA RECEIVED: {metadata}")        # what's coming in
-    print(f"TOGGLED TOOLS: {toggled_tools}")   
+    files_uploaded = metadata.files_uploaded if metadata and metadata.files_uploaded else []
+ 
     model = get_chatModel()
     finalres = ""
     tool_data = Message_data()
@@ -142,10 +179,12 @@ async def stream_response(prompt, chatId, db,metadata):
     
     try:
         async for event in model.astream_events(
-            {"messages": [HumanMessage(content=prompt)], "tools": toggled_tools},
+            {"messages": [HumanMessage(content=prompt)], "tools": toggled_tools, "files_uploaded": files_uploaded},
             config=CONFIG,
             version="v2",
         ):
+            
+            print(event["event"], event.get("name"))  # add this temporarily
             if event["event"] == "on_tool_start":
                 tool_name = event["name"]
                 tool_input = event["data"].get("input")
@@ -155,6 +194,8 @@ async def stream_response(prompt, chatId, db,metadata):
                     "start_time": datetime.now().isoformat()
                 })
                 yield f"data: {json.dumps({'type': 'tool_start', 'tool_name': tool_name, 'tool_input': tool_input})}\n\n"
+             
+
 
             if event["event"] == "on_tool_end":
                 tool_name = event["name"]
@@ -163,6 +204,7 @@ async def stream_response(prompt, chatId, db,metadata):
 
             if event["event"] == "on_chat_model_stream":
                 content = event["data"]["chunk"].content
+                print(f"RAW CHUNK CONTENT: {repr(content)}") 
                 if isinstance(content, list):
                     content = "".join(
                         part.get("text", "") if isinstance(part, dict) else str(part)

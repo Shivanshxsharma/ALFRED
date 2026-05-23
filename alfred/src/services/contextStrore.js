@@ -16,10 +16,15 @@ export const usechatStore = create(
     isStreaming: false,
 
     toggleTools:[
-      { id: "web_search_enabled",       icon: Globe2,     label: "Web search",     enabled: false  },
+      { id: "web_search_enabled",       icon: Globe2,     label: "Web search",     enabled: true },
     ],
 
     actions: {
+
+
+      setUpdateHistory: (val) => set((state) => {
+  state.updateHistory = val
+}),
 
 
       toggleTool: (id) =>

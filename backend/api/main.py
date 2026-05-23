@@ -306,6 +306,7 @@ async def upload_file(file: UploadFile = File(...)):
     ext = Path(file.filename).suffix
     stored_as = f"{uuid4()}{ext}"
     path = os.path.join(UPLOAD_DIR, stored_as)
+    path = path.replace("\\", "/")
     
     with open(path, "wb") as f:
         shutil.copyfileobj(file.file, f)
