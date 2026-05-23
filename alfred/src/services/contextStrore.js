@@ -13,7 +13,6 @@ export const usechatStore = create(
     Curr_Conversation_array: [],
     tool_array:[],
     files_array:[],
-    images_array:[],
     isStreaming: false,
 
     toggleTools:[
@@ -199,6 +198,7 @@ appendStreamingChunk: (chunk) =>
               "content":prompt,
               "meta_data": {
                 files_uploaded: get().files_array.filter(f => !f.error).map(f => ({ name: f.name, path: f.path })),
+                images_uploaded: get().files_array.filter(f => f.type === "image" && !f.error).map(f => ({ name: f.name, base64: f.base64, mime_type: f.mime_type })),
                 toggled_tools: get().toggleTools.reduce((acc, tool) => {
                   acc[tool.id] = tool.enabled;
                   return acc;
