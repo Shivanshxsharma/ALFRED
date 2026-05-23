@@ -300,30 +300,46 @@ async def google_auth_endpoint(req:OAuthCallbackRequest, res:Response,db=Depends
     
 
 
+IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
- try:
-    ext = Path(file.filename).suffix
-    stored_as = f"{uuid4()}{ext}"
-    path = os.path.join(UPLOAD_DIR, stored_as)
-    path = path.replace("\\", "/")
-    
-    with open(path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
-    
+    try:
+        ext = Path(file.filename).suffix.lstrip(".").lower()
+        contents = await file.read()
 
-    print(f"File uploaded successfully: {file.filename} stored as {stored_as}")
-    return {
-        "original_name": file.filename,
-        "path": path,
-    }
- except Exception as e:
-    print(f"Error uploading file: {e}")
-    raise HTTPException(
+        if ext in IMAGE_EXTENSIONS:
+            import base64
+            b64 = base64.b64encode(contents).decode("utf-8")
+            print(f"Image uploaded: {file.filename}")
+            return {
+                "original_name": file.filename,
+                "type": "image",
+                "base64": b64,
+                "mime_type": file.content_type,
+            }
+
+        # document
+        filename = f"{uuid4()}{Path(file.filename).suffix}"
+        path = os.path.join(UPLOAD_DIR, filename).replace("\\", "/")
+
+        with open(path, "wb") as f:
+            f.write(contents)
+
+        print(f"Document uploaded: {file.filename} → {path}")
+        return {
+            "original_name": file.filename,
+            "type": "document",
+            "path": path,
+            "mime_type": file.content_type,
+        }
+
+    except Exception as e:
+        print(f"Error uploading file: {e}")
+        raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error uploading file: {e}"
         )
-    
     
 
 

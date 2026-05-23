@@ -40,6 +40,7 @@ IMPORTANT RULES:
 
 class tool_enabled(TypedDict):
     web_search_enabled:bool
+    file_read_enabled:bool
 
 class file_uploaded(TypedDict):
     name:str
@@ -171,6 +172,8 @@ async def stream_response(prompt, chatId, db,metadata):
     
     toggled_tools:tool_enabled = metadata.toggled_tools if metadata and metadata.toggled_tools else {}
     files_uploaded = metadata.files_uploaded if metadata and metadata.files_uploaded else []
+    if len(files_uploaded) > 0:
+     toggled_tools = {**toggled_tools, "file_read_enabled": True}
  
     model = get_chatModel()
     finalres = ""
