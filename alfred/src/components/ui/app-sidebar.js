@@ -130,7 +130,7 @@ useEffect(() => {
           ...prev
         ];
       });
-      updateHistory.setState(false);
+      user_contextStore.getState().actions.setUpdateHistory(false);
     }
     
     } catch (err) {

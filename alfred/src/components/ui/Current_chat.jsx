@@ -14,6 +14,7 @@ const Current_chat = () => {
 const chatId = usechatStore(useShallow((state) => state.curr_chatid));
 const newChatId = usechatStore(useShallow((state) => state.new_created_chatId));
 const fillOldChat = usechatStore(useShallow((state) => state.actions.fillOldChat));
+const files_array = usechatStore(useShallow((state) => state.files_array));
 useEffect(() => {
   async function fetchMessages() {
     try {
@@ -111,6 +112,7 @@ const [hoveredIndex, setHoveredIndex] = useState(null);
     >
       {copied ? <Check size={13} /> : <Copy size={13} />}
     </button>
+    <div className={`w-full overflow-hidden transition-all duration-500 ease-in-out ${files_array.length > 0 ? 'h-40 opacity-100' : 'h-0 opacity-0'}`} />
   </div>
 ) : hoveredIndex === index ? (
   <div className={`flex w-full h-7 px-5 transition-opacity duration-200 ${message.role == "human" ? "justify-end" : "justify-start"} gap-x-2`}>
@@ -124,6 +126,7 @@ const [hoveredIndex, setHoveredIndex] = useState(null);
     >
       {copied ? <Check size={13} /> : <Copy size={13} />}
     </button>
+    
   </div>
 ) : (
   <div className="w-full h-7" />

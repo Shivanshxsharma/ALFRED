@@ -16,6 +16,7 @@ class User(BaseModel):
 
 
 class Message_data(BaseModel):
+     files_uploaded: Optional[List[dict]] = Field([], description="List of file paths uploaded in the chat")
      toggled_tools: Optional[dict] = Field({}, description="Dictionary of toggled tools and their states")
      tool_calls: Optional[List[dict]] = Field([], description="List of tool calls with details")
      reasoning_steps: Optional[List[str]] = Field(None, description="Reasoning steps taken by the model")
@@ -25,7 +26,7 @@ class Messages(BaseModel):
      role:Literal["llm","human"]=Field(...,description="role of the entity human or model")
      content:str=Field(description="content given by llm or human")
      meta_data: Optional[Message_data] = Field(None, description="metadata of message which includes tool calls, reasoning steps and error info")
-
+    
 
 
 class chats(BaseModel):

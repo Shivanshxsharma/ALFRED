@@ -46,15 +46,14 @@ export default function ChatInput({ router }) {
   }
 
   return (
-    <div className="w-full min-h-full absolute bottom-0 flex flex-col items-center border-2 bg-sidebar border-b-violet-900/80 rounded-2xl p-1">
-      {files_array.length > 0 && (
-        <div className="w-full h-30 bg-transparent mb-2">
+    <div className="w-full min-h-full  transition-all duration-500 ease-in-out absolute bottom-0 flex flex-col items-center border-2 bg-sidebar border-b-violet-900/80 rounded-2xl p-1">
+      <div className={`w-full transition-all duration-300 ease-in-out bg-transparent mb-2 ${files_array.length > 0 ? "h-30" : "h-0"}`}>
           <FileUploadScrollArea
             files={files_array}
             onRemove={usechatStore.getState().actions.removeFile}
           />
         </div>
-      )}
+      
       {/* Textarea grows upward; bottom toolbar is absolute so mb pushes textarea above it} */}
       <div className="flex mb-10 sm:mb-14 items-end w-[98%] sm:min-h-11">
         <textarea
