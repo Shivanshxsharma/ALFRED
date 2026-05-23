@@ -15,7 +15,7 @@ const ChatBubble = ({ index, lastindex, role, content, meta_data }) => {
 
   const isLastMessage = index === lastindex;
 
-  // keep caching live tools as they stream in
+
   useEffect(() => {
     if (isStreaming && isLastMessage && role === "ai" && tool_array?.length > 0) {
       cachedToolsRef.current = tool_array.map(t => ({
@@ -26,7 +26,7 @@ const ChatBubble = ({ index, lastindex, role, content, meta_data }) => {
     }
   }, [tool_array, isStreaming, isLastMessage, role]);
 
-  // reset cache when a new message starts
+
   useEffect(() => {
     if (isStreaming && isLastMessage && role === "ai") {
       cachedToolsRef.current = [];
@@ -70,22 +70,38 @@ const ChatBubble = ({ index, lastindex, role, content, meta_data }) => {
     return () => controls.stop();
   }, [content, isStreaming, role, isLastMessage]);
 
-  const bubbleClass = role === "human" ? "bg-violet-600/15 backdrop-blur-md border border-violet-500/30 rounded-tr-none rounded-2xl" : 'bg-transparent';
+  const bubbleClass = role === "human" 
+  ? "bg-violet-600/15 backdrop-blur-md border border-violet-500/30 rounded-2xl rounded-tr-none" 
+  : 'bg-transparent';
 
-  return (
-    <div className={`p-2.5 md:p-4 my-2 rounded-full md:rounded-2xl md:rounded-tr-none max-w-full ${bubbleClass}`}>
-      <div className="prose prose-invert prose-sm max-w-none text-sm sm:text-[16px] text-white">
-        {role === "ai" ? (
-          <>
-            {toolsToShow.length > 0 && <ToolBar tools={toolsToShow} />}
-            <Markdown message={displayText} meta_data={meta_data} />
-          </>
-        ) : (
-          <p className="text-white">{displayText}</p>
-        )}
-      </div>
+return (
+  <div className={`
+    p-2.5 md:p-4 my-2
+    ${role === "human" 
+      ? "max-w-[85%] sm:max-w-[75%] md:max-w-[65%] self-end" 
+      : "max-w-full w-full"
+    }
+    ${bubbleClass}
+  `}>
+    <div className="prose prose-invert prose-sm max-w-none text-sm sm:text-[16px] text-white min-w-0">
+      {role === "ai" ? (
+        <>
+          {toolsToShow.length > 0 && <ToolBar tools={toolsToShow} />}
+          <Markdown message={displayText} meta_data={meta_data} />
+        </>
+      ) : (
+        <p style={{ 
+          wordBreak: "break-word", 
+          overflowWrap: "break-word",
+          whiteSpace: "pre-wrap",
+          margin: 0,
+        }}>
+          {displayText}
+        </p>
+      )}
     </div>
-  );
+  </div>
+);
 };
 
 export default ChatBubble;

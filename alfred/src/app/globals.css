@@ -219,3 +219,11 @@ cursor: pointer;
 [data-state="closed"] > [data-radix-collapsible-content] {
   animation: collapsible-up 0.2s ease-out;
 }
+
+
+/* allow mermaid diagrams to be full width */
+.mermaid-container svg {
+  max-width: none !important;
+  height: auto !important;
+  min-width: 100%;
+}
