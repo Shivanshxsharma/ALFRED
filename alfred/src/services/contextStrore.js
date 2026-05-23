@@ -13,6 +13,7 @@ export const usechatStore = create(
     Curr_Conversation_array: [],
     tool_array:[],
     files_array:[],
+    images_array:[],
     isStreaming: false,
 
     toggleTools:[
@@ -34,27 +35,38 @@ export const usechatStore = create(
         }),
 
         
-      addFile: (file) => {
-        const id = uuidv4();
-        set((state) => {
-          state.files_array.push({
-            name: file.name,
-            id,
-            progress: 0,
-            raw: file,
-            path:"",
-            error: false,
-          });
-        });
-        return id;
-      },
+addFile: (file) => {
+  const id = uuidv4()
+  const ext = file.name.split(".").pop()?.toLowerCase() || ""
+  const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "gif", "webp"]
+  const type = IMAGE_EXTENSIONS.includes(ext) ? "image" : "document"
+
+  set((state) => {
+    state.files_array.push({
+      id,
+      name: file.name,
+      progress: 0,
+      raw: file,
+      type,          
+      path: null,
+      base64: null,
+      mime_type: null,
+      uploaded: false,
+      error: false,
+    })
+  })
+  return id
+},
        
-      setFileServerData: (id, serverData) => set((state) => {
-       const file = state.files_array.find(f => f.id === id)
-      if (file) {
-        file.path = serverData.path
-        }
-      }),
+setFileServerData: (id, serverData) => set((state) => {
+  const file = state.files_array.find(f => f.id === id)
+  if (file) {
+    file.path = serverData.path || null
+    file.base64 = serverData.base64 || null
+    file.mime_type = serverData.mime_type || null
+    file.uploaded = true
+  }
+}),
 
 
 
