@@ -45,13 +45,17 @@ class tool_enabled(TypedDict):
 class file_uploaded(TypedDict):
     name:str
     path:str
-
+class image_uploaded(TypedDict):
+    name:str
+    base64:str
+    mime_type:str
 
 
 class chatState(TypedDict):
     messages:Annotated[list[BaseMessage],add_messages] 
     tools:tool_enabled
     files_uploaded:list[file_uploaded]
+    images_uploaded:list[image_uploaded]
 
 
 
@@ -81,7 +85,8 @@ async def chat_node(state: chatState):
     messages = state["messages"]
     tools_state = state.get("tools", {})
     files_uploaded = state.get("files_uploaded", [])
-    
+    images_uploaded = state.get("images_uploaded", [])
+
     TOOL_MAP = {
         "web_search_enabled": search_tool,
     }
@@ -92,27 +97,58 @@ async def chat_node(state: chatState):
 
     non_system = [m for m in messages if not isinstance(m, SystemMessage)]
     
+    # file context
     file_context = ""
     if files_uploaded:
-     file_list = "\n".join(f"- {f['name']} at path {f['path']}" for f in files_uploaded)
-     print(file_list)
-     file_context = f"""
-     
-     CRITICAL: The user has uploaded these files:
-     {file_list}
+        file_list = "\n".join(f"- {f['name']} at path {f['path']}" for f in files_uploaded)
+        print(f"FILES: {file_list}")
+        file_context = f"""
 
-     You MUST call the read_file tool with the EXACT path shown above before answering ANY question about the file contents. Do NOT say you cannot access files. The read_file tool gives you direct access.
-     """
-    final_messages = [SystemMessage(content=get_system_prompt() + file_context)] + non_system
+CRITICAL: The user has uploaded these files:
+{file_list}
+You MUST call the read_file tool with the EXACT path shown above before answering ANY question about the file contents. Do NOT say you cannot access files. The read_file tool gives you direct access.
+"""
+
+    # image context
+    image_context = ""
+    if images_uploaded:
+        image_names = "\n".join(f"- {img['name']}" for img in images_uploaded)
+        print(f"IMAGES: {image_names}")
+        image_context = f"""
+
+The user has also uploaded these images which are embedded directly in this message:
+{image_names}
+Analyze them as part of your response — no tool call needed for images.
+"""
+
+    final_messages = [SystemMessage(content=get_system_prompt() + file_context + image_context)]
+
     
+    if images_uploaded:
+        
+        last_human = non_system[-1]
+
+        content = [{ "type": "text", "text": last_human.content }]
+
+        for img in images_uploaded:
+            content.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:{img['mime_type']};base64,{img['base64']}"
+                }
+            })
+
+        
+        non_system = non_system[:-1] + [HumanMessage(content=content)]
+
+    final_messages = final_messages + non_system
+
     llm = get_model()
-    
     if active_tools:
         llm = llm.bind_tools(active_tools)
-    
-    response = await llm.ainvoke(final_messages)
-    return {'messages': [response]}
 
+    response = await llm.ainvoke(final_messages)
+    return {"messages": [response]}
 
 
 
@@ -172,6 +208,8 @@ async def stream_response(prompt, chatId, db,metadata):
     
     toggled_tools:tool_enabled = metadata.toggled_tools if metadata and metadata.toggled_tools else {}
     files_uploaded = metadata.files_uploaded if metadata and metadata.files_uploaded else []
+    images_uploaded = metadata.images_uploaded if metadata and metadata.images_uploaded else []
+
     if len(files_uploaded) > 0:
      toggled_tools = {**toggled_tools, "file_read_enabled": True}
  
@@ -182,7 +220,7 @@ async def stream_response(prompt, chatId, db,metadata):
     
     try:
         async for event in model.astream_events(
-            {"messages": [HumanMessage(content=prompt)], "tools": toggled_tools, "files_uploaded": files_uploaded},
+            {"messages": [HumanMessage(content=prompt)], "tools": toggled_tools, "files_uploaded": files_uploaded , "images_uploaded": images_uploaded},
             config=CONFIG,
             version="v2",
         ):
