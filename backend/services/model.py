@@ -24,6 +24,7 @@ import traceback
 import json
 from datetime import datetime
 from ..models.models import Message_data
+from ..services.abort import _cancel_events
 
 def get_system_prompt():
     current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
