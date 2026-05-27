@@ -24,6 +24,7 @@ from ..services.authentication import log_in,sign_up,verify_token,update_refresh
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.messages import BaseMessage,HumanMessage,SystemMessage
 from ..core.database  import add_to_Db,getUserInfo,getChatHistory,getChatMessages
+from ..services.abort import _cancel_events
 
 
 app=FastAPI()
@@ -340,6 +341,15 @@ async def upload_file(file: UploadFile = File(...)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error uploading file: {e}"
         )
+    
+
+@app.post("/abort/{chatId}")
+async def abort_stream(chatId: str):
+    event = _cancel_events.get(chatId)
+    if event:
+        event.set()
+        return {"status": "aborted"}
+    return {"status": "not_found"}
     
 
 

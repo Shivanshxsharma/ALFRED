@@ -6,34 +6,55 @@ import mermaid from "mermaid";
 import { useShallow } from "zustand/shallow";
 import { usechatStore } from "@/services/contextStrore";
 import { ChartBlock } from "./ChartBlock";
-// import { i } from "framer-motion/dist/types.d-DagZKalS";
+
+const FONT = "'IBM Plex Mono', monospace"
 
 mermaid.initialize({
   startOnLoad: false,
   theme: "dark",
   themeVariables: {
-    primaryColor: "#7c3aed",
+    // primary — violet (matches chart COLORS[0])
+    primaryColor: "#1a0533",
     primaryTextColor: "#e2e8f0",
-    primaryBorderColor: "#6d28d9",
+    primaryBorderColor: "#7c3aed",
+
+    // edges and lines — violet lighter
     lineColor: "#a78bfa",
-    secondaryColor: "#1e1b4b",
-    tertiaryColor: "#0f0a1e",
+
+    // secondary nodes — emerald tint (matches chart COLORS[1])
+    secondaryColor: "#0a1a10",
+    secondaryTextColor: "#e2e8f0",
+    secondaryBorderColor: "#10b981",
+
+    // tertiary — amber tint (matches chart COLORS[2])
+    tertiaryColor: "#1a150a",
+    tertiaryTextColor: "#e2e8f0",
+    tertiaryBorderColor: "#f59e0b",
+
+    // background
     background: "#000000",
     mainBkg: "#0d0d0d",
-    nodeBorder: "#7c3aed",
     clusterBkg: "#0d0d0d",
-    titleColor: "#a78bfa",
     edgeLabelBackground: "#000000",
-    fontFamily: "'IBM Plex Mono', monospace",
+
+    // node borders
+    nodeBorder: "#7c3aed",
+
+    // title
+    titleColor: "#a78bfa",
+
+    // fill types — rotate through chart color palette
+    fillType0: "#1a0533",   // violet (COLORS[0])
+    fillType1: "#0a1a10",   // emerald (COLORS[1])
+    fillType2: "#1a1200",   // amber (COLORS[2])
+    fillType3: "#0a0f1a",   // blue (COLORS[3])
+    fillType4: "#1a0a0a",   // red (COLORS[4])
+    fillType5: "#1a0a12",   // pink (COLORS[5])
+    fillType6: "#0a1a1a",   // teal (COLORS[6])
+    fillType7: "#1a0f0a",   // orange (COLORS[7])
+
+    fontFamily: FONT,
     fontSize: "13px",
-    fillType0: "#1a0533",
-    fillType1: "#0a0a1a",
-    fillType2: "#0f1a2e",
-    fillType3: "#1a1a0a",
-    fillType4: "#0a1a0a",
-    fillType5: "#1a0a0a",
-    tertiaryTextColor: "#e2e8f0",
-    tertiaryBorderColor: "#6d28d9",
   },
   flowchart: {
     nodeSpacing: 60,
@@ -47,17 +68,113 @@ mermaid.initialize({
     actorMargin: 80,
     useMaxWidth: false,
   },
-});
+}) 
 
 function sanitizeMermaid(code) {
   return code
-    .replace(/\(([^)]*)\)/g, "$1")           // remove parentheses
-    .replace(/^\s*(\d+)([A-Za-z])/gm, "$2$1") // flip "1A" → "A1"
-    .replace(/\b(\d+)\[/g, "N$1[")            // "1[" → "N1["
-    .replace(/\b(\d+)\{/g, "N$1{")            // "1{" → "N1{"
-    .replace(/\b(\d+)\(/g, "N$1(")            // "1(" → "N1("
-    .replace(/ --> (\d+)/g, " --> N$1")        // fix edge targets too
+    .replace(/\(([^)]*)\)/g, "$1")
+    .replace(/^\s*(\d+)([A-Za-z])/gm, "$2$1")
+    .replace(/\b(\d+)\[/g, "N$1[")
+    .replace(/\b(\d+)\{/g, "N$1{")
+    .replace(/\b(\d+)\(/g, "N$1(")
+    .replace(/ --> (\d+)/g, " --> N$1")
     .replace(/ --> (\d+)\[/g, " --> N$1[")
+}
+
+// shared block shell — same design for both mermaid and chart
+function BlockShell({ type, copied, hovered, onCopy, onMouseEnter, onMouseLeave, children }) {
+  return (
+    <div
+      className="not-prose"
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      style={{
+        position: "relative",
+        width: "100%",
+        margin: "12px 0",
+        borderRadius: 10,
+        border: "1px solid rgba(255,255,255,0.08)",
+        background: "#000000",
+        boxSizing: "border-box",
+      }}
+    >
+      {/* badge */}
+      <span style={{
+        position: "absolute", top: 10, left: 12, zIndex: 10,
+        fontSize: 11, fontFamily: FONT,
+        color: "rgba(161,161,170,0.5)",
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        padding: "2px 8px", borderRadius: 6,
+      }}>
+        {type}
+      </span>
+
+      {/* copy button */}
+      <button
+        onClick={onCopy}
+        style={{
+          position: "absolute", top: 8, right: 10, zIndex: 10,
+          padding: "6px", borderRadius: 6,
+          border: copied ? "1px solid rgba(124,58,237,0.3)" : "1px solid rgba(255,255,255,0.08)",
+          background: copied ? "rgba(124,58,237,0.1)" : "rgba(24,24,27,0.6)",
+          color: copied ? "#a78bfa" : "rgba(161,161,170,0.6)",
+          cursor: "pointer",
+          opacity: hovered || copied ? 1 : 0,
+          transition: "all 0.2s ease",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}
+      >
+        {copied ? <Check size={13} /> : <Copy size={13} />}
+      </button>
+
+      {children}
+    </div>
+  )
+}
+
+// shared dot loader
+function DotLoader() {
+  return (
+    <div style={{
+      width: "100%",
+      padding: "2rem",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+    }}>
+      {[0, 1, 2].map(i => (
+        <div key={i} style={{
+          width: 5, height: 5, borderRadius: "50%",
+          background: "rgba(167,139,250,0.5)",
+          animation: "blockDot 1.2s ease-in-out infinite",
+          animationDelay: `${i * 0.2}s`,
+        }} />
+      ))}
+      <style>{`
+        @keyframes blockDot {
+          0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
+          40% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+// shared scroll wrapper
+function ScrollWrap({ children }) {
+  return (
+    <div style={{
+      width: "100%",
+      overflowX: "auto",
+      overflowY: "hidden",
+      scrollbarWidth: "thin",
+      scrollbarColor: "rgba(124,58,237,0.3) transparent",
+    }}>
+      {children}
+    </div>
+  )
 }
 
 function MermaidBlock({ code }) {
@@ -74,30 +191,22 @@ function MermaidBlock({ code }) {
     const id = "mermaid-" + Math.random().toString(36).slice(2)
     const safeCode = sanitizeMermaid(code)
 
-mermaid.render(id, safeCode)
-  .then(({ svg }) => {
-    if (!ref.current) return
-    ref.current.innerHTML = svg
-
-    const svgEl = ref.current.querySelector("svg")
-    if (svgEl) {
-      // keep SVG's natural width, just make height auto
-      const naturalWidth = svgEl.getAttribute("width") || "100%"
-      svgEl.style.cssText = `
-        display: block;
-        min-width: 100%;
-        height: auto;
-      `
-      svgEl.removeAttribute("height")
-      // keep width attribute so SVG renders at its natural size
-    }
-    setError(null)
-  })
+    mermaid.render(id, safeCode)
+      .then(({ svg }) => {
+        if (!ref.current) return
+        ref.current.innerHTML = svg
+        const svgEl = ref.current.querySelector("svg")
+        if (svgEl) {
+          svgEl.style.cssText = "display: block; min-width: 100%; height: auto;"
+          svgEl.removeAttribute("height")
+        }
+        setError(null)
+      })
       .catch((err) => {
         console.error("Mermaid render error:", err)
         setError(safeCode)
       })
-  }, [code, isStreaming])
+  }, [code, isStreaming])   // ← isStreaming in deps — fires when streaming stops
 
   if (!code?.trim()) return null
 
@@ -107,185 +216,84 @@ mermaid.render(id, safeCode)
     setTimeout(() => setCopied(false), 2000)
   }
 
-if (isStreaming) {
+  // ← always render BlockShell so ref div is always mounted
   return (
-    <div style={{
-      width: "100%",
-      background: "#000000",
-      border: "1px solid rgba(255,255,255,0.08)",
-      borderRadius: 10,
-      padding: "2rem",
-      margin: "12px 0",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 6,
-    }}>
-      {[0, 1, 2].map(i => (
-        <div
-          key={i}
-          style={{
-            width: 5,
-            height: 5,
-            borderRadius: "50%",
-            background: "rgba(167,139,250,0.5)",
-            animation: "mermaidDot 1.2s ease-in-out infinite",
-            animationDelay: `${i * 0.2}s`,
-          }}
-        />
-      ))}
-      <style>{`
-        @keyframes mermaidDot {
-          0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
-          40% { transform: scale(1); opacity: 1; }
-        }
-      `}</style>
-    </div>
-  )
-}
-
-  if (error) {
-    return (
-      <div style={{
-        width: "100%", margin: "12px 0", borderRadius: 10,
-        border: "1px solid rgba(239,68,68,0.2)",
-        background: "rgba(239,68,68,0.05)", overflow: "hidden",
-      }}>
-        <div style={{
-          padding: "8px 12px",
-          borderBottom: "1px solid rgba(239,68,68,0.15)",
-          fontSize: 11, fontFamily: "'IBM Plex Mono', monospace",
-          color: "rgba(239,68,68,0.7)",
-        }}>
-          diagram parse error — raw code
-        </div>
-        <pre style={{
-          padding: "1rem", margin: 0, fontSize: 11,
-          fontFamily: "'IBM Plex Mono', monospace",
-          color: "rgba(255,255,255,0.3)",
-          whiteSpace: "pre-wrap", overflowX: "auto",
-        }}>
-          {error}
-        </pre>
-      </div>
-    )
-  }
-
-return (
-  <div
-    className="mermaid-wrap not-prose"
-    onMouseEnter={() => setHovered(true)}
-    onMouseLeave={() => setHovered(false)}
-    style={{
-      position: "relative",
-      width: "100%",
-      margin: "12px 0",
-      borderRadius: 10,
-      border: "1px solid rgba(255,255,255,0.08)",
-      background: "#000000",
-    }}
-  >
-    {/* badge */}
-    <span style={{
-      position: "absolute", top: 10, left: 12, zIndex: 10,
-      fontSize: 11, fontFamily: "'IBM Plex Mono', monospace",
-      color: "rgba(161,161,170,0.5)",
-      background: "rgba(255,255,255,0.04)",
-      border: "1px solid rgba(255,255,255,0.08)",
-      padding: "2px 8px", borderRadius: 6,
-    }}>
-      diagram
-    </span>
-
-    {/* copy */}
-    <button
-      onClick={copy}
-      style={{
-        position: "absolute", top: 8, right: 10, zIndex: 10,
-        padding: "6px", borderRadius: 6,
-        border: copied ? "1px solid rgba(124,58,237,0.3)" : "1px solid rgba(255,255,255,0.08)",
-        background: copied ? "rgba(124,58,237,0.1)" : "rgba(24,24,27,0.6)",
-        color: copied ? "#a78bfa" : "rgba(161,161,170,0.6)",
-        cursor: "pointer", opacity: hovered || copied ? 1 : 0,
-        transition: "all 0.2s ease",
-        display: "flex", alignItems: "center", justifyContent: "center",
-      }}
+    <BlockShell
+      type="diagram"
+      copied={copied} hovered={hovered}
+      onCopy={copy}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
-      {copied ? <Check size={13} /> : <Copy size={13} />}
-    </button>
-
-    {/* scroll wrapper — this is the key */}
-    <div style={{
-      width: "100%",
-      overflowX: "auto",   // ← horizontal scroll here
-      overflowY: "visible",
-      paddingTop: "2.5rem",
-      paddingBottom: "1rem",
-      background: "#000000",
-      borderRadius: 10,
-    }}>
-      {/* inner div that can be wider than parent */}
-      <div
-        ref={ref}
-        style={{
-          minWidth: "100%",   // ← at least full width
-          width: "max-content", // ← grows as wide as SVG needs
-          padding: "0 1rem",
-        }}
-      />
-    </div>
-  </div>
-)
+      {isStreaming ? (
+        <DotLoader />
+      ) : error ? (
+        <>
+          <div style={{
+            marginTop: "2.5rem",
+            borderTop: "1px solid rgba(239,68,68,0.15)",
+            padding: "8px 12px 4px",
+            fontSize: 11, fontFamily: FONT,
+            color: "rgba(239,68,68,0.7)",
+          }}>
+            diagram parse error — raw code
+          </div>
+          <pre style={{
+            padding: "0.5rem 1rem 1rem",
+            margin: 0, fontSize: 11, fontFamily: FONT,
+            color: "rgba(255,255,255,0.3)",
+            whiteSpace: "pre-wrap", overflowX: "auto",
+          }}>
+            {error}
+          </pre>
+        </>
+      ) : (
+        <ScrollWrap>
+          <div
+            ref={ref}
+            style={{
+              minWidth: "100%",
+              width: "max-content",
+              padding: "2.5rem 1rem 1rem",
+            }}
+          />
+        </ScrollWrap>
+      )}
+    </BlockShell>
+  )
 }
 
 export function CodeBlock({ language, children }) {
   const [copied, setCopied] = useState(false);
   const [hovered, setHovered] = useState(false);
   const isStreaming = usechatStore(useShallow(state => state.isStreaming))
+
   if (language === "mermaid") {
     return <MermaidBlock code={String(children || "").trim()} />
   }
-   
-  
 
-
-
-// CodeBlock.jsx — remove isStreaming from chart handling
-if (language === "chart") {
-  const raw = String(children || "").trim()
-  try {
-    const data = JSON.parse(raw)
-    console.log("Parsed chart data:", data)
-    return <ChartBlock data={data} />   // ← no isStreaming prop
-  } catch {
-    return (
-      <div style={{
-        padding: "1rem", borderRadius: 8, margin: "12px 0",
-        border: "1px solid rgba(239,68,68,0.2)",
-        background: "rgba(239,68,68,0.05)",
-        fontSize: 11, fontFamily: "'IBM Plex Mono', monospace",
-        color: "rgba(239,68,68,0.6)",
-      }}>
-        {isStreaming ? (
-          // dots while streaming incomplete JSON
-          <div style={{ display: "flex", gap: 6, justifyContent: "center", padding: "1rem" }}>
-            {[0,1,2].map(i => (
-              <div key={i} style={{
-                width: 5, height: 5, borderRadius: "50%",
-                background: "rgba(167,139,250,0.5)",
-                animation: "chartDot 1.2s ease-in-out infinite",
-                animationDelay: `${i * 0.2}s`,
-              }} />
-            ))}
-            <style>{`@keyframes chartDot { 0%,80%,100%{transform:scale(0.6);opacity:0.3} 40%{transform:scale(1);opacity:1} }`}</style>
-          </div>
-        ) : "chart parse error — invalid JSON"}
-      </div>
-    )
+  if (language === "chart") {
+    const raw = String(children || "").trim()
+    try {
+      const data = JSON.parse(raw)
+      return <ChartBlock data={data} />
+    } catch {
+      return (
+        <div style={{
+          padding: "1rem", borderRadius: 8, margin: "12px 0",
+          border: "1px solid rgba(239,68,68,0.2)",
+          background: "rgba(239,68,68,0.05)",
+          fontSize: 11, fontFamily: FONT,
+          color: "rgba(239,68,68,0.6)",
+        }}>
+          {isStreaming
+            ? <DotLoader />
+            : "chart parse error — invalid JSON"
+          }
+        </div>
+      )
+    }
   }
-}
-
-  
 
   const showLang = language && language !== "text";
 

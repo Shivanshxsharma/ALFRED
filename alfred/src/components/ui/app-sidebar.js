@@ -24,13 +24,14 @@ import{
 // wudcb
 
 
-import { user_contextStore } from "@/services/contextStrore";
+import { usechatStore, user_contextStore } from "@/services/contextStrore";
 import { useShallow } from "zustand/react/shallow";
 import { shallow } from 'zustand/shallow';
 import { useCallback, useEffect, useRef, useState } from "react";
 
 
 import { fetchuserHistory } from "@/services/fetch_info";
+import { useParams } from "next/navigation";
 
 
 const items = [
@@ -44,6 +45,7 @@ const items = [
 const PAGE_SIZE = 10;
 
 
+
 export function AppSidebar() {
 
 // Separate selectors
@@ -53,6 +55,8 @@ const email = user_contextStore(useShallow((state) => state.email));
 const initialHistory = user_contextStore(useShallow((state) => state.chat_titles));
 const updateHistory  = user_contextStore(useShallow((state) => state.updateHistory));
 
+const {setcurr_chatid} = usechatStore(useShallow((state) => state.actions.setcurr_chatid)); 
+const curr_chatid = usechatStore(useShallow((state) => state.curr_chatid));
 
 
 const [history, setHistory]     = useState([]); // local state for chat history
@@ -204,7 +208,7 @@ useEffect(() => {
           <SidebarGroupLabel >Chat History</SidebarGroupLabel>
           <SidebarGroupContent className=" h-full overflow-y-auto max-h-[calc(100vh-200px)]   " >
            <Collapsible defaultOpen className="group/collapsible">
-               <CollapsibleTrigger  className="group-data-[state=collapsed]:hidden flex group items-center justify-between w-50 px-2 py-1 rounded-md bg-transparent hover:bg-zinc-700 dark:hover:bg-zinc-700 data-[state=open]:bg-zinc-800 dark:data-[state=open]:bg-zinc-700">
+               <CollapsibleTrigger  className="group-data-[state=collapsed]:hidden  mb-2 flex group items-center justify-between w-50 px-2 py-1 rounded-md bg-transparent hover:bg-zinc-700 dark:hover:bg-zinc-700 data-[state=open]:bg-zinc-800 dark:data-[state=open]:bg-zinc-700">
                 <span>Previous chats</span>
                 <ChevronDown className="transition-transform w-4 h-4 duration-200 group-data-[state=closed]:rotate-270" />
               </CollapsibleTrigger>
@@ -214,17 +218,12 @@ useEffect(() => {
                   
                     {
                       history.map((item)=>(
-                        <SidebarMenuSubItem key={item.chatId} > 
-                        <Link href={`/chats/${item.chatId}`} className="flex items-center gap-2 w-full">
-                         <SidebarMenuSubButton className="h-10 w-full">
-                          <span >
-                          
-                            
-                              {item.title}
-                            
-                         
-                          </span>
-                         </SidebarMenuSubButton> </Link>
+                        <SidebarMenuSubItem key={item.chatId}  > 
+<SidebarMenuSubButton asChild className={curr_chatid === item.chatId ? "h-10 w-full bg-violet-700 dark:bg-violet-700" : "h-10 w-full"}>
+  <Link href={`/chats/${item.chatId}`} className="flex items-center gap-2 w-full" onClick={() => setcurr_chatid(item.chatId)}>
+    {item.title}
+  </Link>
+</SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                       ))
                     }
