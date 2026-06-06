@@ -1,31 +1,28 @@
 import os
-from os import path
+import asyncio
 from langchain_core.tools import tool
-from pypdf import PdfReader
-import docx2txt
+from markitdown import MarkItDown
 
-
-
+md_converter = MarkItDown()  # initialize once, reuse
 
 def extract_text(path: str) -> str:
     print(f"Extracting text from file: {path}")
     ext = path.split(".")[-1].lower()
-    if ext == "pdf":
-        reader = PdfReader(path)
-        return "\n".join(page.extract_text() for page in reader.pages)
-    elif ext in ("docx", "doc"):
-        return docx2txt.process(path)
+    
+    if ext in ("pdf", "docx", "doc", "pptx", "xlsx"):
+        result = md_converter.convert(path)
+        return result.text_content
+    
     elif ext in ("txt", "md"):
         with open(path) as f:
             return f.read()
+    
     return ""
 
-MAX_DIRECT_CHARS = 5
-
-
+MAX_DIRECT_CHARS = 5000  # was 5 — bug fix
 
 @tool
-def read_file(path: str, query: str) -> str:
+async def read_file(path: str, query: str) -> str:
     """Read a file and return relevant content based on the query.
     Use this when the user has attached a file and asks questions about it.
     
@@ -33,18 +30,19 @@ def read_file(path: str, query: str) -> str:
         path: the server path of the uploaded file
         query: the user's question, used to retrieve relevant chunks for large files
     """
-
     print(f"CWD: {os.getcwd()}")
     print(f"EXISTS: {os.path.exists(path)}")
+    
     if not os.path.exists(path):
         return f"File not found: {path}"
-    text = extract_text(path)
+    
+    # run in thread pool — non-blocking
+    loop = asyncio.get_event_loop()
+    text = await loop.run_in_executor(None, extract_text, path)
 
     if len(text) <= MAX_DIRECT_CHARS:
         return text
     
-    # For larger files, we could implement a more sophisticated retrieval mechanism.    
-
     else:
         from langchain_text_splitters import RecursiveCharacterTextSplitter
         from langchain_community.vectorstores import FAISS
