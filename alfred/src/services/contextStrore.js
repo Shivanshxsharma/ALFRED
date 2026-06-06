@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { v4 as uuidv4 } from "uuid"
-import { streamChatResponse } from './streaming';
+import { abortStream, streamChatResponse } from './streaming';
 import { use } from 'react';
 import { fetchOldMessages, fetchUserInfo } from './fetch_info';
 import { Globe2 } from "lucide-react";
@@ -10,10 +10,12 @@ export const usechatStore = create(
   immer((set,get) => ({
     new_created_chatId:null,
     curr_chatid:null,
+   
     Curr_Conversation_array: [],
     tool_array:[],
     files_array:[],
     isStreaming: false,
+    abortController: null,
 
     toggleTools:[
       { id: "web_search_enabled",       icon: Globe2,     label: "Web search",     enabled: true },
@@ -174,6 +176,7 @@ appendStreamingChunk: (chunk) =>
 
 
       submitHandler: async (prompt,router) =>{
+        const controller = new AbortController();
         let chatId=get().curr_chatid;
         let isnew_Chat=false;
         if(chatId===null||!chatId){
@@ -208,7 +211,9 @@ appendStreamingChunk: (chunk) =>
             (chunk) => get().actions.appendStreamingChunk(chunk), // Use callbacks
             (isStreaming) => get().actions.setisStreaming(isStreaming),
             isnew_Chat,
-            user_contextStore.getState().user_id
+            user_contextStore.getState().user_id,
+            controller.signal
+
           );
         } catch (error) {
           console.error("Streaming failed:", error);
@@ -232,13 +237,50 @@ appendStreamingChunk: (chunk) =>
         alert("Failed to load chat history. Please try again.");  
         router.push('/chats');
     }
-  )}
+  )},
+
+  stopStreaming: async () => {
+  const { abortController, curr_chatid } = get();
+  abortController?.abort(); 
+    if (curr_chatid) {
+    await abortStream(curr_chatid);
+  }
+
+  set(state => {
+    state.isStreaming = false;
+    state.abortController = null;
+  });
+},
+
+
+
+
+
+
+  
+    },  
   
   
   
-    },  })
+  
+  
+  
+
+
+
+
+
+
+
+})
+
+
+
+    
 )
 );
+
+
 
 
 

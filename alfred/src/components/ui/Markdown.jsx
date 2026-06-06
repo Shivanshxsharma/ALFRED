@@ -55,12 +55,16 @@ export default function Markdown({ message, meta_data }) {
               {children}
             </blockquote>
           ),
-          code({ inline, className, children }) {
-            const lang = /language-(\w+)/.exec(className || "")?.[1] || "text";
-            return inline
-              ? <code className="px-1.5 py-0.5 rounded text-xs font-mono bg-white/10 text-zinc-200">{children}</code>
-              : <CodeBlock language={lang}>{String(children).trim()}</CodeBlock>;
-          },
+code({ node, className, children }) {
+  const lang = /language-(\w+)/.exec(className || "")?.[1] || "text";
+  
+  // Detect inline: no newlines in children and no language class
+  const isInline = !className && !String(children).includes('\n');
+  
+  return isInline
+    ? <code className="px-1.5 py-0.5 rounded text-xs font-mono bg-violet-500/15 text-violet-300 border border-violet-500/20">{children}</code>
+    : <CodeBlock language={lang}>{String(children).trim()}</CodeBlock>;
+},
           table: ({ children }) => (
             <div className="overflow-x-auto my-4 rounded-lg border border-white/10">
               <Table>{children}</Table>

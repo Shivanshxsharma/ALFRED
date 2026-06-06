@@ -304,11 +304,12 @@ export function CodeBlock({ language, children }) {
   };
 
   return (
-    <div
-      className="relative my-3 rounded-lg max-w-full overflow-hidden border border-white/8"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
+<div
+  className="relative my-3 rounded-lg max-w-full overflow-hidden border border-white/8"
+  style={{ WebkitOverflowScrolling: "touch" }}
+  onMouseEnter={() => setHovered(true)}
+  onMouseLeave={() => setHovered(false)}
+>
       {showLang && (
         <span className="absolute top-2.5 left-3 z-10 text-xs font-mono px-2 py-0.5 rounded-md bg-white/5 border border-white/8 text-zinc-500">
           {language}
@@ -332,15 +333,18 @@ export function CodeBlock({ language, children }) {
         language={language}
         style={vscDarkPlus}
         PreTag="div"
-        customStyle={{
-          margin: 0,
-          borderRadius: 0,
-          padding: showLang ? "3rem 1.25rem 1rem" : "1rem 1.25rem",
-          fontSize: "13px",
-          lineHeight: "1.7",
-          background: "transparent",
-          overflowX: "auto",
-        }}
+customStyle={{
+  margin: 0,
+  borderRadius: 0,
+  padding: showLang ? "3rem 1.25rem 1rem" : "1rem 1.25rem",
+  fontSize: "13px",
+  lineHeight: "1.7",
+  background: "transparent",
+  overflowX: "auto",
+  wordBreak: "normal",
+  overflowWrap: "normal",
+  whiteSpace: "pre",
+}}
       >
         {children}
       </SyntaxHighlighter>

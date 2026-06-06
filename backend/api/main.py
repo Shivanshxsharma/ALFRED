@@ -1,3 +1,4 @@
+import asyncio
 import os
 import traceback
 from urllib import response
@@ -99,9 +100,10 @@ async def stream_endpoint(req: add_to_Chat, db=Depends(get_db)):
         metadata = req.prompt.meta_data
         
         await add_to_Db(is_new_chat, user_id, chatId, {"role": "human", "content": query, "meta_data": metadata.model_dump()}, db)
-        
+        cancel_event = asyncio.Event()
+        _cancel_events[chatId] = cancel_event
         return StreamingResponse(
-            stream_response(query, chatId, db, metadata),
+            stream_response(query, chatId, db, metadata,cancel_event),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",

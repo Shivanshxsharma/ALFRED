@@ -5,10 +5,11 @@ import { user_contextStore, usechatStore } from './contextStrore';
 
 
 
-export const streamChatResponse = async (chatId, prompt, onChunk, onComplete,isnew_Chat,user_id) => {
+export const streamChatResponse = async (chatId, prompt, onChunk, onComplete,isnew_Chat,user_id,signal) => {
   await fetchEventSource('http://127.0.0.1:8000/stream', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    signal: signal,
     body: JSON.stringify({ "is_new_chat":isnew_Chat,"user_id":user_id, "chatId":chatId, "prompt":prompt }),
     onmessage(ev) {
       const data = JSON.parse(ev.data);
@@ -51,4 +52,19 @@ export const streamChatResponse = async (chatId, prompt, onChunk, onComplete,isn
       onComplete(false);
     }
   });
+};
+
+
+
+
+export const abortStream = async (chatId) => {
+  try {
+    const response = await fetch(`http://127.0.0.1:8000/abort/${chatId}`, {
+      method: 'POST'
+    });
+    const result = await response.json();
+    console.log("Abort result:", result);
+  } catch (error) {
+    console.error("Error aborting stream:", error);
+  }
 };

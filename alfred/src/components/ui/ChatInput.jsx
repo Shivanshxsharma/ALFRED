@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useRef, use } from "react"
-import { CircleArrowUp } from "lucide-react"
+import { CircleArrowUp, StopCircle } from "lucide-react"
 import { useChatActions, usechatStore } from "@/services/contextStrore"
 import { cn } from "@/lib/utils"
 import VioletButton from "./VioletButton"
@@ -17,10 +17,11 @@ const MAX_HEIGHT = 200
 
 
 export default function ChatInput({ router }) {
-    const { addFile, updateFileProgress, setFileError ,toggleTool ,setFileServerData } = usechatStore.getState().actions;
+    const { addFile, updateFileProgress, setFileError ,toggleTool ,setFileServerData, stopStreaming } = usechatStore.getState().actions;
 
   const files_array=usechatStore(useShallow((state) => state.files_array));
   const toggleTools = usechatStore(useShallow((state) => state.toggleTools));
+  const isStreaming = usechatStore(useShallow((state) => state.isStreaming));
 
   const { submitHandler } = useChatActions()
   const [allowInput, setAllowInput] = useState(false)
@@ -94,7 +95,10 @@ export default function ChatInput({ router }) {
         </div>
 
 
-        <button
+        {
+
+          !isStreaming?
+          <button
           disabled={!allowInput}
           onClick={handleSubmit}
           className={cn(
@@ -103,7 +107,17 @@ export default function ChatInput({ router }) {
           )}
         >
           <CircleArrowUp />
+        </button>:
+        <button
+        onClick={() => stopStreaming()}
+        className={cn(
+          "w-fit h-fit rounded-full p-1 transition-all ease-in-out duration-200"
+        )}
+        >
+          <StopCircle />
         </button>
+        
+        }
       </div>
     </div>
   )

@@ -58,7 +58,6 @@ const updateHistory  = user_contextStore(useShallow((state) => state.updateHisto
 const {setcurr_chatid} = usechatStore(useShallow((state) => state.actions.setcurr_chatid)); 
 const curr_chatid = usechatStore(useShallow((state) => state.curr_chatid));
 
-
 const [history, setHistory]     = useState([]); // local state for chat history
   const [page, setPage]           = useState(1.5);           // next page to fetch
   const [hasMore, setHasMore]     = useState(true);
@@ -219,8 +218,8 @@ useEffect(() => {
                     {
                       history.map((item)=>(
                         <SidebarMenuSubItem key={item.chatId}  > 
-<SidebarMenuSubButton asChild className={curr_chatid === item.chatId ? "h-10 w-full bg-violet-700 dark:bg-violet-700" : "h-10 w-full"}>
-  <Link href={`/chats/${item.chatId}`} className="flex items-center gap-2 w-full" onClick={() => setcurr_chatid(item.chatId)}>
+<SidebarMenuSubButton asChild className={curr_chatid === item.chatId && curr_chatid !== null ? "h-10 w-[98%] border border-violet-700 bg-violet-700/30 dark:bg-violet-700/30" : "h-10 bg-transparent w-[98%]"}>
+  <Link href={`/chats/${item.chatId}`} className="flex items-center gap-2 w-[98%] ml-[1%]" onClick={() => setcurr_chatid(item.chatId)}>
     {item.title}
   </Link>
 </SidebarMenuSubButton>

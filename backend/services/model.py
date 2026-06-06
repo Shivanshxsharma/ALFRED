@@ -1,4 +1,5 @@
 # services/model.py
+import asyncio
 import json
 from dotenv import load_dotenv
 from langchain_core import messages
@@ -239,7 +240,7 @@ def get_chatModel():
 
 
 
-async def stream_response(prompt, chatId, db,metadata):
+async def stream_response(prompt, chatId, db,metadata, cancel_event: asyncio.Event ):
     
     
     toggled_tools:tool_enabled = metadata.toggled_tools if metadata and metadata.toggled_tools else {}
@@ -290,6 +291,15 @@ async def stream_response(prompt, chatId, db,metadata):
                 if content:
                     finalres += content
                     yield f"data: {json.dumps({'type': 'stream', 'role': 'ai', 'content': content})}\n\n"
+
+
+
+
+                    
+                if cancel_event.is_set():
+                 yield f"data: {json.dumps({'type': 'aborted'})}\n\n"
+                 break
+
 
         # save to DB only if we got a response
         if finalres:
