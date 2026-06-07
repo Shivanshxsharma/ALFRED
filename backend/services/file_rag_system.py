@@ -11,6 +11,7 @@ def extract_text(path: str) -> str:
     
     if ext in ("pdf", "docx", "doc", "pptx", "xlsx"):
         result = md_converter.convert(path)
+        print( "checkup-------------------------------------------" + result.text_content[:3000]) 
         return result.text_content
     
     elif ext in ("txt", "md"):
@@ -19,7 +20,7 @@ def extract_text(path: str) -> str:
     
     return ""
 
-MAX_DIRECT_CHARS = 5000  # was 5 — bug fix
+MAX_DIRECT_CHARS = 5
 
 @tool
 async def read_file(path: str, query: str) -> str:

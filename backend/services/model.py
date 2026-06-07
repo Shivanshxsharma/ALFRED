@@ -130,6 +130,7 @@ async def chat_node(state: chatState):
     
     active_tools = [TOOL_MAP[key] for key, enabled in tools_state.items() if enabled and key in TOOL_MAP]
     if files_uploaded:
+        print(f"FILES UPLOADED--------------------------: {files_uploaded}")
         active_tools.append(read_file)
 
     non_system = [m for m in messages if not isinstance(m, SystemMessage)]
@@ -246,6 +247,7 @@ async def stream_response(prompt, chatId, db,metadata, cancel_event: asyncio.Eve
     toggled_tools:tool_enabled = metadata.toggled_tools if metadata and metadata.toggled_tools else {}
     files_uploaded = metadata.files_uploaded if metadata and metadata.files_uploaded else []
     images_uploaded = metadata.images_uploaded if metadata and metadata.images_uploaded else []
+    print(f"FILES UPLOADED: {files_uploaded}")
 
     if len(files_uploaded) > 0:
      toggled_tools = {**toggled_tools, "file_read_enabled": True}
