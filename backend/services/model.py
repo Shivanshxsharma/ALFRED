@@ -1,6 +1,7 @@
 # services/model.py
 import asyncio
 import json
+import operator
 from dotenv import load_dotenv
 from langchain_core import messages
 from langgraph.prebuilt import ToolNode, tools_condition
@@ -26,6 +27,7 @@ import json
 from datetime import datetime
 from ..models.models import Message_data
 from ..services.abort import _cancel_events
+from .file_rag_system import vector_search   # you'll add this to file_rag_system.py
 
 def get_system_prompt():
     current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -75,25 +77,35 @@ For multiple series include multiple keys in lines/bars array.
     return base + static_rules
 
 
-class tool_enabled(TypedDict):
-    web_search_enabled:bool
-    file_read_enabled:bool
+class persisted_file(TypedDict):
+    name: str
+    path: str
+    file_hash: str
+    needs_rag: bool       # populated only if needs_rag=False
 
 class file_uploaded(TypedDict):
-    name:str
-    path:str
-class image_uploaded(TypedDict):
-    name:str
-    base64:str
-    mime_type:str
+    name: str
+    path: str
+    file_hash: str
+    needs_rag: bool     # returned from upload endpoint
 
+class image_uploaded(TypedDict):
+    name: str
+    base64: str
+    mime_type: str
+
+class tool_enabled(TypedDict):
+    web_search_enabled: bool
+    reading_files_enabled: bool
 
 class chatState(TypedDict):
-    messages:Annotated[list[BaseMessage],add_messages] 
-    tools:tool_enabled
-    files_uploaded:list[file_uploaded]
-    images_uploaded:list[image_uploaded]
-
+    messages: Annotated[list[BaseMessage], add_messages]
+    tools: tool_enabled
+    files_uploaded: list[persisted_file]        # per request from frontend
+    images_uploaded: list[image_uploaded]      # per request from frontend
+    persisted_files: Annotated[list[persisted_file], operator.add]      # checkpointed across turns
+    injected_file_text: str                    # set by router, read by chat_node
+    pre_rag_files: Annotated[list[persisted_file], operator.add]           # set by router/retrieval_node
 
 
 
@@ -118,40 +130,119 @@ def get_model():
 
 
 
+
+
+async def router_node(state: chatState):
+    files_uploaded = state["files_uploaded"]
+
+    if not files_uploaded:
+        return chatState
+
+    small_texts = []
+
+    for f in files_uploaded:
+        if not f.get("needs_rag"):
+            small_texts.append({f["name"]: f["full_text"]})
+        
+    
+
+    updates = {"persisted_files": files_uploaded}
+
+    if small_texts:
+        updates["injected_file_text"] = "\n\n".join(
+            f"File: {name}\nContent:\n{text}" for item in small_texts for name, text in item.items()
+        )
+
+
+    return updates
+
+
+
+def should_retrieve(state: chatState):
+    files=state["files_uploaded"]
+    if any(f.get("needs_rag") for f in files):
+        return "retrieval_node"
+    else :
+        return "chat_node"
+
+       
+
+
+
+async def retrieval_node(state: chatState):
+    files_uploaded = state["files_uploaded"]
+    rag_files = [f for f in files_uploaded if f.get("needs_rag")]
+    injected_file_text = state["injected_file_text"]
+     
+    # get latest user query
+    non_system = [m for m in state["messages"] if not isinstance(m, SystemMessage)]
+    last_human = non_system[-1]
+    query = last_human.content if isinstance(last_human.content, str) else last_human.content[0]["text"]
+
+    db = get_db()
+    file_hashes = [f["file_hash"] for f in rag_files]
+
+    chunks = await vector_search(query, file_hashes, db, top_k=5)
+
+    if not chunks:
+        return {"injected_file_text": injected_file_text + "No further relevant content found in the uploaded files"}
+
+    rag_context = "\n\n".join(
+        f"[Chunk {c['chunk_index']}]\n{c['text']}"
+        for c in chunks
+    )
+
+    return {"injected_file_text": injected_file_text + rag_context , "pre_rag_files": rag_files}
+
+
+
+
+
+
+
+
+
 async def chat_node(state: chatState):
     messages = state["messages"]
     tools_state = state.get("tools", {})
-    files_uploaded = state.get("files_uploaded", [])
     images_uploaded = state.get("images_uploaded", [])
+    injected_file_text = state.get("injected_file_text", "")
+    rag_files = state.get("pre_rag_files", [])
 
+    # file_read_enabled removed — retrieval is now handled by retrieval_node
     TOOL_MAP = {
         "web_search_enabled": search_tool,
+        "reading_files_enabled": read_file
     }
-    
     active_tools = [TOOL_MAP[key] for key, enabled in tools_state.items() if enabled and key in TOOL_MAP]
-    if files_uploaded:
-        print(f"FILES UPLOADED--------------------------: {files_uploaded}")
-        active_tools.append(read_file)
 
     non_system = [m for m in messages if not isinstance(m, SystemMessage)]
-    
-    # file context
+
+    # inject file context from router/retrieval_node
+
     file_context = ""
-    if files_uploaded:
-        file_list = "\n".join(f"- {f['name']} at path {f['path']}" for f in files_uploaded)
-        print(f"FILES: {file_list}")
-        file_context = f"""
 
-CRITICAL: The user has uploaded these files:
-{file_list}
-You MUST call the read_file tool with the EXACT path shown above before answering ANY question about the file contents. Do NOT say you cannot access files. The read_file tool gives you direct access.
+    if injected_file_text or rag_files:
+     file_context = f"RELEVANT FILE CONTEXT:\n{injected_file_text}"
+    
+    if rag_files:
+        file_hashes = [f["file_hash"] for f in rag_files]
+        file_context += f"""
+---
+If the above context is insufficient and the query feels related to the uploaded files:
+- Do NOT guess or make up information
+- Call read_file with:
+  - query: your specific search question
+  - file_hashes: {file_hashes}
+- Do NOT call read_file for general questions unrelated to the file
 """
+        
 
-    # image context
+        
+    # image context unchanged
     image_context = ""
     if images_uploaded:
         image_names = "\n".join(f"- {img['name']}" for img in images_uploaded)
-        print(f"IMAGES: {image_names}")
         image_context = f"""
 
 The user has also uploaded these images which are embedded directly in this message:
@@ -159,15 +250,9 @@ The user has also uploaded these images which are embedded directly in this mess
 Analyze them as part of your response — no tool call needed for images.
 """
 
-    final_messages = [SystemMessage(content=get_system_prompt() + file_context + image_context)]
-
-    
     if images_uploaded:
-        
         last_human = non_system[-1]
-
-        content = [{ "type": "text", "text": last_human.content }]
-
+        content = [{"type": "text", "text": last_human.content}]
         for img in images_uploaded:
             content.append({
                 "type": "image_url",
@@ -175,10 +260,9 @@ Analyze them as part of your response — no tool call needed for images.
                     "url": f"data:{img['mime_type']};base64,{img['base64']}"
                 }
             })
-
-        
         non_system = non_system[:-1] + [HumanMessage(content=content)]
 
+    final_messages = [SystemMessage(content=get_system_prompt() + file_context + image_context)]
     final_messages = final_messages + non_system
 
     llm = get_model()
@@ -194,13 +278,21 @@ Analyze them as part of your response — no tool call needed for images.
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 chat_model=None
-
-
-
-
-
-
 
 
 def smart_tools_condition(state: chatState):
@@ -215,35 +307,31 @@ def smart_tools_condition(state: chatState):
 
 def get_chatModel():
     global chat_model
-    if(chat_model):
-     return chat_model
-    else:
-     tools=[search_tool,read_file]
-     tool_node = ToolNode(tools=tools)
+    if chat_model:
+        return chat_model
 
-     graph=StateGraph(chatState)
+    tool_node = ToolNode(tools=[search_tool, read_file])
 
-     graph.add_node("chat_node",chat_node)
-     graph.add_node("tools",tool_node)
+    graph = StateGraph(chatState)
 
+    graph.add_node("router_node", router_node)
+    graph.add_node("retrieval_node", retrieval_node)
+    graph.add_node("chat_node", chat_node)
+    graph.add_node("tools", tool_node)
 
+    graph.add_edge(START, "router_node")
+    graph.add_conditional_edges("router_node", should_retrieve)
+    graph.add_edge("retrieval_node", "chat_node")
+    graph.add_conditional_edges("chat_node", smart_tools_condition)
+    graph.add_edge("tools", "chat_node")
 
-     graph.add_edge(START,"chat_node")
-     graph.add_conditional_edges("chat_node",smart_tools_condition)
-     graph.add_edge("tools","chat_node")
-    #  graph.add_edge("chat_node",END)
-     checkpointer= MongoDBSaver(get_db())
-     chat_model=graph.compile(checkpointer=checkpointer)
-     return chat_model
-
-
-
+    checkpointer = MongoDBSaver(get_db())
+    chat_model = graph.compile(checkpointer=checkpointer)
+    return chat_model
 
 
 
 async def stream_response(prompt, chatId, db,metadata, cancel_event: asyncio.Event ):
-    
-    
     toggled_tools:tool_enabled = metadata.toggled_tools if metadata and metadata.toggled_tools else {}
     files_uploaded = metadata.files_uploaded if metadata and metadata.files_uploaded else []
     images_uploaded = metadata.images_uploaded if metadata and metadata.images_uploaded else []

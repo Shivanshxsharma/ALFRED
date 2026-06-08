@@ -26,7 +26,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.messages import BaseMessage,HumanMessage,SystemMessage
 from ..core.database  import add_to_Db,getUserInfo,getChatHistory,getChatMessages
 from ..services.abort import _cancel_events
-from ..services.file_service import store_file_doc, extract_text, check_duplicate, compute_hash
+from ..services.file_service import embed_and_index, store_file_doc, extract_text, check_duplicate, compute_hash
 
 app=FastAPI()
 

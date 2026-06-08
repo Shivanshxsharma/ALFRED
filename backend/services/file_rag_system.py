@@ -2,58 +2,86 @@ import os
 import asyncio
 from langchain_core.tools import tool
 from markitdown import MarkItDown
+from backend.core.config import get_db
+from backend.services.file_service import CHUNKS_COLLECTION
+from backend.services.model import embeddings_model, ATLAS_VECTOR_INDEX
 
 md_converter = MarkItDown()  # initialize once, reuse
 
-def extract_text(path: str) -> str:
-    print(f"Extracting text from file: {path}")
-    ext = path.split(".")[-1].lower()
-    
-    if ext in ("pdf", "docx", "doc", "pptx", "xlsx"):
-        result = md_converter.convert(path)
-        print( "checkup-------------------------------------------" + result.text_content[:3000]) 
-        return result.text_content
-    
-    elif ext in ("txt", "md"):
-        with open(path) as f:
-            return f.read()
-    
-    return ""
-
-MAX_DIRECT_CHARS = 5
-
-@tool
-async def read_file(path: str, query: str) -> str:
-    """Read a file and return relevant content based on the query.
-    Use this when the user has attached a file and asks questions about it.
+async def vector_search(
+    query: str,
+    file_hashes: list[str],
+    db,
+    top_k: int = 5
+) -> list[dict]:
+    """
+    Embeds query and searches Atlas Vector Search for relevant chunks.
     
     Args:
-        path: the server path of the uploaded file
-        query: the user's question, used to retrieve relevant chunks for large files
+        query:       user's current message
+        file_hashes: list of file hashes to scope the search
+        db:          MongoDB database instance
+        top_k:       number of chunks to return
     """
-    print(f"CWD: {os.getcwd()}")
-    print(f"EXISTS: {os.path.exists(path)}")
+
+    # fix — asyncio.to_thread instead of get_event_loop
+    query_embedding = await asyncio.to_thread(
+        embeddings_model.embed_query,
+        query
+    )
+
+    pipeline = [
+        {
+            "$vectorSearch": {
+                "index": ATLAS_VECTOR_INDEX,
+                "path": "embedding",
+                "queryVector": query_embedding,
+                "numCandidates": top_k * 10,
+                "limit": top_k,
+                "filter": {
+                    "file_hash": {"$in": file_hashes}
+                }
+            }
+        },
+        {
+            "$project": {
+                "text": 1,
+                "chunk_index": 1,
+                "file_hash": 1,
+                "score": {"$meta": "vectorSearchScore"},
+                "_id": 0
+            }
+        }
+    ]
+
+    cursor = db[CHUNKS_COLLECTION].aggregate(pipeline)
+    results = await cursor.to_list(length=top_k)
+
+    print(f"[vector_search] Retrieved {len(results)} chunks for query: {query[:50]}")
+    return results
+
+
+
+
+
+
+@tool
+async def read_file(query: str, file_hashes: list[str]) -> str:
+    """
+    Search for more relevant content from previously uploaded files.
+    Call this ONLY when the provided context chunks are insufficient to answer the question.
     
-    if not os.path.exists(path):
-        return f"File not found: {path}"
+    Args:
+        query:       your specific search question
+        file_hashes: list of file hashes of the uploaded files
+    """
+    db = get_db()
+    chunks = await vector_search(query, file_hashes, db, top_k=5)
     
-    # run in thread pool — non-blocking
-    loop = asyncio.get_event_loop()
-    text = await loop.run_in_executor(None, extract_text, path)
-
-    if len(text) <= MAX_DIRECT_CHARS:
-        return text
+    if not chunks:
+        return "No additional relevant content found in the uploaded files."
     
-    else:
-        from langchain_text_splitters import RecursiveCharacterTextSplitter
-        from langchain_community.vectorstores import FAISS
-        from langchain_google_genai import GoogleGenerativeAIEmbeddings
-
-        splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-        chunks = splitter.split_text(text)
-
-        embeddings = GoogleGenerativeAIEmbeddings(model="gemini-embedding-2-preview")
-        vectorstore = FAISS.from_texts(chunks, embeddings)
-
-        relevant_chunks = vectorstore.similarity_search(query, k=3)
-        return "\n\n".join(chunk.page_content for chunk in relevant_chunks)
+    return "\n\n".join(
+        f"[Chunk {c['chunk_index']}]\n{c['text']}"
+        for c in chunks
+    )
