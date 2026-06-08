@@ -8,7 +8,7 @@ from bson import ObjectId
 import os
 import shutil
 from pathlib import Path
-from fastapi import FastAPI, Depends,HTTPException, status,WebSocket,WebSocketDisconnect,Response,Request,UploadFile, File
+from fastapi import BackgroundTasks, FastAPI, Depends,HTTPException, status,WebSocket,WebSocketDisconnect,Response,Request,UploadFile, File
 from uuid import uuid4
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -26,7 +26,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.messages import BaseMessage,HumanMessage,SystemMessage
 from ..core.database  import add_to_Db,getUserInfo,getChatHistory,getChatMessages
 from ..services.abort import _cancel_events
-
+from ..services.file_service import store_file_doc, extract_text, check_duplicate, compute_hash
 
 app=FastAPI()
 
@@ -305,8 +305,28 @@ async def google_auth_endpoint(req:OAuthCallbackRequest, res:Response,db=Depends
 
 IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(
+    file: UploadFile,
+    chat_id: str,
+    user_id: str,
+    background_tasks: BackgroundTasks,
+    db = Depends(get_db)
+):
     try:
         ext = Path(file.filename).suffix.lstrip(".").lower()
         contents = await file.read()
@@ -322,6 +342,10 @@ async def upload_file(file: UploadFile = File(...)):
                 "mime_type": file.content_type,
             }
 
+
+
+
+         
         # document
         filename = f"{uuid4()}{Path(file.filename).suffix}"
         path = os.path.join(UPLOAD_DIR, filename).replace("\\", "/")
@@ -330,12 +354,46 @@ async def upload_file(file: UploadFile = File(...)):
             f.write(contents)
 
         print(f"Document uploaded: {file.filename} → {path}")
+
+        file_hash = compute_hash(contents)
+        duplicate_info = await check_duplicate(file, file_hash, db, user_id)
+        if(duplicate_info is not None):
+            return duplicate_info
+        
+
+        text = extract_text(path)   
+        char_count = len(text)
+        needs_rag = char_count > 5000
+
+        await store_file_doc(file_hash, file, path, user_id, chat_id, needs_rag, char_count, text, db)
+
+        if needs_rag:
+            background_tasks.add_task(embed_and_index, path, file_hash, text, db)
+        
+
         return {
-            "original_name": file.filename,
-            "type": "document",
-            "path": path,
-            "mime_type": file.content_type,
-        }
+        "name": file.filename,
+        "path": path,
+        "file_hash": file_hash,
+        "needs_rag": needs_rag,
+        "char_count": char_count
+     }
+        
+            
+    
+
+
+    
+
+
+
+
+
+
+
+
+
+
 
     except Exception as e:
         print(f"Error uploading file: {e}")
