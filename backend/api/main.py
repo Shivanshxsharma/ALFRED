@@ -371,7 +371,7 @@ async def upload_file(
 
         text = extract_text(path)   
         char_count = len(text)
-        needs_rag = char_count > 5000
+        needs_rag = char_count > 30000
 
         await store_file_doc(file_hash, file, path, user_id, needs_rag, char_count, text, db)
         print(f"File stored: {file.filename}")
