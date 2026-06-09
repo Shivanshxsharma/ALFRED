@@ -14,18 +14,12 @@ import "../globals.css"
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className="dark"  
-    speedupyoutubeads="false"
-     resize="226,402">
-      <body className="fixed inset-0">
-    <SidebarProvider defaultOpen={false}>
+    <SidebarProvider defaultOpen>
       <AppSidebar />
       <SidebarInset>
          {children}
         </SidebarInset>
     </SidebarProvider>
-      </body>
-    </html>
   )
 }
 

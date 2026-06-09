@@ -8,7 +8,7 @@ from bson import ObjectId
 import os
 import shutil
 from pathlib import Path
-from fastapi import BackgroundTasks, FastAPI, Depends,HTTPException, status,WebSocket,WebSocketDisconnect,Response,Request,UploadFile, File
+from fastapi import BackgroundTasks, FastAPI, Depends, Form,HTTPException, status,WebSocket,WebSocketDisconnect,Response,Request,UploadFile
 from uuid import uuid4
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -119,6 +119,13 @@ async def stream_endpoint(req: add_to_Chat, db=Depends(get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error setting up stream: {str(e)}"
         )
+    
+
+
+
+
+
+    
 
 @app.post("/login")
 async def login_endpoint(res:Response,req:authenticate_User,db=Depends(get_db)):
@@ -322,11 +329,13 @@ IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 @app.post("/upload")
 async def upload_file(
     file: UploadFile,
-    chat_id: str,
-    user_id: str,
     background_tasks: BackgroundTasks,
+    user_id: str = Form(...),
     db = Depends(get_db)
 ):
+
+
+    print(f"Received upload request for user_id: {user_id}, filename: {file.filename}")
     try:
         ext = Path(file.filename).suffix.lstrip(".").lower()
         contents = await file.read()
@@ -353,11 +362,10 @@ async def upload_file(
         with open(path, "wb") as f:
             f.write(contents)
 
-        print(f"Document uploaded: {file.filename} → {path}")
 
         file_hash = compute_hash(contents)
         duplicate_info = await check_duplicate(file, file_hash, db, user_id)
-        if(duplicate_info is not None):
+        if duplicate_info is not None:
             return duplicate_info
         
 
@@ -365,8 +373,8 @@ async def upload_file(
         char_count = len(text)
         needs_rag = char_count > 5000
 
-        await store_file_doc(file_hash, file, path, user_id, chat_id, needs_rag, char_count, text, db)
-
+        await store_file_doc(file_hash, file, path, user_id, needs_rag, char_count, text, db)
+        print(f"File stored: {file.filename}")
         if needs_rag:
             background_tasks.add_task(embed_and_index, path, file_hash, text, db)
         
@@ -374,6 +382,7 @@ async def upload_file(
         return {
         "name": file.filename,
         "path": path,
+        "status": "uploaded",
         "file_hash": file_hash,
         "needs_rag": needs_rag,
         "char_count": char_count

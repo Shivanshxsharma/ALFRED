@@ -14,9 +14,9 @@ export default function RootLayout({ children }) {
     speedupyoutubeads="false"
      resize="226,402">
       <body className="fixed inset-0">
-        {/* <QueryClientProvider client={queryClient}> */}
+        
          {children}
-        {/* </QueryClientProvider> */}
+        
       </body>
     </html>
   )

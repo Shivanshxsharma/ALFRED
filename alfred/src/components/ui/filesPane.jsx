@@ -5,9 +5,6 @@ const FILE_TYPE_MAP = {
   pdf: "PDF", doc: "DOC", docx: "DOCX",
   xls: "XLS", xlsx: "XLSX",
   ppt: "PPT", pptx: "PPTX",
-  mp4: "MP4", mov: "MOV", avi: "AVI",
-  mp3: "MP3", wav: "WAV",
-  zip: "ZIP", rar: "RAR", "7z": "7Z",
   txt: "TXT", csv: "CSV", json: "JSON", md: "MD",
   js: "JS", ts: "TS", jsx: "JSX", tsx: "TSX",
   html: "HTML", css: "CSS",
@@ -173,7 +170,7 @@ function ImageCard({ file, onRemove }) {
           textAlign: "right",
           fontFamily: "'IBM Plex Mono', monospace",
         }}>
-          {isError ? "failed" : isDone ? "done" : `${Math.round(progress)}%`}
+          {isError ? "failed - " + file.status : isDone ? "done" : `${Math.round(progress)}%`}
         </div>
       </div>
     </div>

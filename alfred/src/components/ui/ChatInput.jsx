@@ -85,6 +85,7 @@ export default function ChatInput({ router }) {
             })
               .then((res) => {
                 updateFileProgress(id, 100)
+                console.log("File uploaded successfully:", res)
                 setFileServerData(id, res)
               })
               .catch(() => setFileError(id))

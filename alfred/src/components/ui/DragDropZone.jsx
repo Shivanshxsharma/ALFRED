@@ -10,10 +10,35 @@ import {
   DrawerTitle,
   DrawerDescription,
 } from "@/components/ui/drawer"
+import { ErrorBanner, useErrorBanner } from "./ErrorBanner"
 
 export function DragDropZone({ children }) {
+  const [dropMessage, setDropMessage] = React.useState(null)
   const [isDragging, setIsDragging] = React.useState(false)
   const dragCounter = React.useRef(0)
+  const MAX_SIZE = 10 * 1024 * 1024 
+
+
+const FILE_TYPE_MAP = {
+  pdf: "PDF", doc: "DOC", docx: "DOCX",
+  xls: "XLS", xlsx: "XLSX",
+  ppt: "PPT", pptx: "PPTX",
+  txt: "TXT", csv: "CSV", json: "JSON", md: "MD",
+  js: "JS", ts: "TS", jsx: "JSX", tsx: "TSX",
+  html: "HTML", css: "CSS",
+}
+
+const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "gif", "webp"]
+
+const ALLOWED_EXTENSIONS = new Set([
+  ...Object.keys(FILE_TYPE_MAP),  
+  ...IMAGE_EXTENSIONS              
+])
+
+
+
+
+const { error, showError } = useErrorBanner()
 
   React.useEffect(() => {
     const handleDragEnter = (e) => {
@@ -38,32 +63,48 @@ export function DragDropZone({ children }) {
 
 
 
-
 const handleDrop = (e) => {
   e.preventDefault()
   dragCounter.current = 0
-  setIsDragging(false)
 
   const droppedFiles = Array.from(e.dataTransfer.files)
-  droppedFiles.forEach(rawFile => {
-    const id = usechatStore.getState().actions.addFile(rawFile)  
+  const existingNames = new Set(usechatStore.getState().files_array.map(f => f.name))
 
+  droppedFiles.forEach(rawFile => {
+    // duplicate check
+   if (existingNames.has(rawFile.name)) {
+  showError(`"${rawFile.name}" is already uploaded`)
+  return
+}
+
+
+const ext = rawFile.name.split(".").pop()?.toLowerCase() || ""
+
+if (!ALLOWED_EXTENSIONS.has(ext)) {
+  showError(`"${rawFile.name}" — unsupported file type`)
+  return
+}
+
+if (rawFile.size > MAX_SIZE) {
+  showError(`"${rawFile.name}" exceeds 10MB limit`)
+  return
+}
+
+    setIsDragging(false)
+    const id = usechatStore.getState().actions.addFile(rawFile)
     uploadFile({ raw: rawFile }, (percent) => {
       usechatStore.getState().actions.updateFileProgress(id, percent)
     })
     .then((res) => {
-        usechatStore.getState().actions.updateFileProgress(id, 100)
-        usechatStore.getState().actions.setFileServerData(id, res)
+      usechatStore.getState().actions.updateFileProgress(id, 100)
+      usechatStore.getState().actions.setFileServerData(id, res)
     })
-    .catch(() => {
-        console.error("Error uploading file:", rawFile.name)
-        console.error("err message:", err.message)
-        usechatStore.getState().actions.setFileError(id)
+    .catch((err) => {
+      console.error("Error uploading file:", rawFile.name, err.message)
+      usechatStore.getState().actions.setFileError(id)
     })
-})}
-
-
-
+  })
+}
 
 
     // attach to document — unaffected by DOM changes
@@ -82,6 +123,7 @@ const handleDrop = (e) => {
 
   return (
     <>
+    <ErrorBanner message={error} />
       {children}
 
       <Drawer
@@ -96,13 +138,16 @@ const handleDrop = (e) => {
         <DrawerContent className="border-violet-900/60 bg-sidebar" style={{ userSelect: "none" }}>
           <div className="mx-auto w-full max-w-sm py-8 flex flex-col items-center gap-4">
             <DrawerHeader className="items-center">
-              <DrawerTitle style={{
-                fontFamily: "'IBM Plex Mono', monospace",
-                color: "rgba(139, 92, 246, 0.9)",
-                letterSpacing: "0.05em",
-              }}>
-                drop files here
-              </DrawerTitle>
+<DrawerTitle style={{
+  fontFamily: "'IBM Plex Mono', monospace",
+  color: dropMessage ? "rgba(239, 68, 68, 0.9)" : "rgba(139, 92, 246, 0.9)",
+  letterSpacing: "0.05em",
+}}>
+  {dropMessage ?? "drop files here"}
+</DrawerTitle>
+<DrawerDescription style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+  {dropMessage ? "" : "release to upload"}
+</DrawerDescription>
               <DrawerDescription style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
                 release to upload
               </DrawerDescription>

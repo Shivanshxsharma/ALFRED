@@ -10,7 +10,7 @@ export const usechatStore = create(
   immer((set,get) => ({
     new_created_chatId:null,
     curr_chatid:null,
-   
+    updateHistory:false,
     Curr_Conversation_array: [],
     tool_array:[],
     files_array:[],
@@ -24,9 +24,9 @@ export const usechatStore = create(
     actions: {
 
 
-      setUpdateHistory: (val) => set((state) => {
+setUpdateHistory: (val) => set((state) => {
   state.updateHistory = val
-}),
+  }),
 
 
       toggleTool: (id) =>
@@ -45,9 +45,12 @@ addFile: (file) => {
   set((state) => {
     state.files_array.push({
       id,
+      file_hash:null,
+      needs_rag:null,
       name: file.name,
       progress: 0,
       raw: file,
+      status: "uploading",
       type,          
       path: null,
       base64: null,
@@ -63,6 +66,8 @@ setFileServerData: (id, serverData) => set((state) => {
   const file = state.files_array.find(f => f.id === id)
   if (file) {
     file.path = serverData.path || null
+    file.file_hash = serverData.file_hash || null
+    file.needs_rag = serverData.needs_rag ;
     file.base64 = serverData.base64 || null
     file.mime_type = serverData.mime_type || null
     file.uploaded = true
@@ -87,6 +92,11 @@ setFileServerData: (id, serverData) => set((state) => {
         setFileError: (id) => set((state) => {
           const file = state.files_array.find(f => f.id === id)
           if (file) file.error = true
+        }),
+
+        setFilestatus: (name, status) => set((state) => {
+          const file = state.files_array.find(f => f.name === name)
+          if (file) file.status = status
         }),
 
 
@@ -200,7 +210,7 @@ appendStreamingChunk: (chunk) =>
               "role":"human",
               "content":prompt,
               "meta_data": {
-                files_uploaded: get().files_array.filter(f => !f.error).map(f => ({ name: f.name, path: f.path })),
+                files_uploaded: get().files_array.filter(f => !f.error).map(f => ({ name: f.name, path: f.path,file_hash: f.file_hash, needs_rag: f.needs_rag })),
                 images_uploaded: get().files_array.filter(f => f.type === "image" && !f.error).map(f => ({ name: f.name, base64: f.base64, mime_type: f.mime_type })),
                 toggled_tools: get().toggleTools.reduce((acc, tool) => {
                   acc[tool.id] = tool.enabled;

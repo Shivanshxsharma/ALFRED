@@ -120,29 +120,24 @@ const fetchHistory = useCallback(async (page) => {
 
   //update history on new chat addition
 useEffect(() => {
-
   const loadNewChat = async () => {
+    if (!updateHistory) return;  // ← guard at top, not inside
     try {
-      if(updateHistory){
       const data = await fetchuserHistory(0, 2);
-      
       setHistory((prev) => {
         const ids = new Set(prev.map((c) => c.chatId));
         return [
-          ...data.items.filter((c) => !ids.has(c.chatId)), 
-          ...prev
+          ...data.items.filter((c) => !ids.has(c.chatId)),
+          ...prev,
         ];
       });
-      user_contextStore.getState().actions.setUpdateHistory(false);
-    }
-    
     } catch (err) {
       console.error(err);
+    } finally {
+      user_contextStore.getState().actions.setUpdateHistory(false);  // ← always reset, even on error
     }
   };
-
   loadNewChat();
-
 }, [updateHistory]);
 
 
@@ -211,51 +206,54 @@ useEffect(() => {
                 <span>Previous chats</span>
                 <ChevronDown className="transition-transform w-4 h-4 duration-200 group-data-[state=closed]:rotate-270" />
               </CollapsibleTrigger>
-              <CollapsibleContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  
-                    {
-                      history.map((item)=>(
-                        <SidebarMenuSubItem key={item.chatId}  > 
-<SidebarMenuSubButton asChild className={curr_chatid === item.chatId && curr_chatid !== null ? "h-10 w-[98%] border border-violet-700 bg-violet-700/30 dark:bg-violet-700/30" : "h-10 bg-transparent w-[98%]"}>
-  <Link href={`/chats/${item.chatId}`} className="flex items-center gap-2 w-[98%] ml-[1%]" onClick={() => setcurr_chatid(item.chatId)}>
-    {item.title}
-  </Link>
-</SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                      ))
-                    }
-                    
+             <CollapsibleContent>
+  <SidebarMenu>
 
-                 {/* sentinal element for intersection observer */}
+    {/* History items — NO wrapping SidebarMenuItem */}
+    {history.map((item) => (
+      <SidebarMenuSubItem key={item.chatId}>
+        <SidebarMenuSubButton
+          asChild
+          className={
+            curr_chatid === item.chatId && curr_chatid !== null
+              ? "h-10 w-[98%] border border-violet-700 bg-violet-700/30 dark:bg-violet-700/30"
+              : "h-10 bg-transparent w-[98%]"
+          }
+        >
+          <Link
+            href={`/chats/${item.chatId}`}
+            className="flex items-center gap-2 w-[98%] ml-[1%]"
+            onClick={() => setcurr_chatid(item.chatId)}
+          >
+            {item.title}
+          </Link>
+        </SidebarMenuSubButton>
+      </SidebarMenuSubItem>
+    ))}
 
+    {/* Loading skeleton — use SidebarMenuSubItem directly, no SidebarMenuItem wrapper */}
+    {loading && (
+      <>
+        {[1, 2, 3].map((i) => (
+          <SidebarMenuSubItem key={`skeleton-${i}`} className="w-full animate-pulse group-data-[state=collapsed]:hidden">
+            <div className="h-10 w-full rounded-md bg-zinc-300 dark:bg-zinc-700" />
+          </SidebarMenuSubItem>
+        ))}
+      </>
+    )}
 
-<SidebarMenuItem   className={` ${loading? 'flex' : 'hidden'}    flex-col items-center gap-2 w-full animate-pulse group-data-[state=collapsed]:hidden`}>
-  <SidebarMenuSubItem className="w-full">
-    <div className="h-10 w-full rounded-md bg-zinc-300 dark:bg-zinc-700"></div>
-  </SidebarMenuSubItem>
+    {/* No more chats indicator */}
+    {!hasMore && (
+      <div className="w-full flex justify-center text-xs text-zinc-400 py-1 group-data-[state=collapsed]:hidden">
+        no more chats
+      </div>
+    )}
 
-  <SidebarMenuSubItem className="w-full">
-    <div className="h-10 w-full rounded-md bg-zinc-300 dark:bg-zinc-700"></div>
-  </SidebarMenuSubItem>
+    {/* Sentinel */}
+    <div ref={sentinelRef} className="h-1 w-full bg-transparent group-data-[state=collapsed]:hidden" />
 
-  <SidebarMenuSubItem className="w-full">
-    <div className="h-10 w-full rounded-md bg-zinc-300 dark:bg-zinc-700"></div>
-  </SidebarMenuSubItem>
-</SidebarMenuItem>   
-                                
-                <div  className={` ${!hasMore? 'h-1' : 'hidden'} w-full flex justify-center text-zinc-400 bg-transparent group-data-[state=collapsed]:hidden`} >no more chats</div>
-                <div ref={sentinelRef} className="h-1 w-full bg-transparent group-data-[state=collapsed]:hidden" /> 
-                 
-            
-
-
-
-
-                </SidebarMenuItem>
-              </SidebarMenu>
-              </CollapsibleContent>
+  </SidebarMenu>
+</CollapsibleContent>
             </Collapsible>
           </SidebarGroupContent>
         </SidebarGroup>
