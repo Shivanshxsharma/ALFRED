@@ -115,6 +115,8 @@ setFileServerData: (id, serverData) => set((state) => {
         setisStreaming: (bool) => set((state) => {
         state.isStreaming = bool;
       }),
+
+
       setcurr_chatid: (chatId) => set((state) => {
         console.log("setting chat id",chatId)
         state.curr_chatid = chatId;
@@ -136,6 +138,9 @@ setFileServerData: (id, serverData) => set((state) => {
           state.Curr_Conversation_array.push({
             "role":role,
             "content":content,
+            "meta_data": { 
+            "files_uploaded": get().files_array.filter(f => !f.error).map(f => ({ name: f.name, type: f.type , mime_type: f.mime_type,  base64: f.base64 }))
+              }
           });
           console.log("Message added:", content);
         }),
@@ -210,7 +215,7 @@ appendStreamingChunk: (chunk) =>
               "role":"human",
               "content":prompt,
               "meta_data": {
-                files_uploaded: get().files_array.filter(f => !f.error).map(f => ({ name: f.name, path: f.path,file_hash: f.file_hash, needs_rag: f.needs_rag })),
+                files_uploaded: get().files_array.filter(f => !f.error && f.type !== "image").map(f => ({ name: f.name, path: f.path,file_hash: f.file_hash, needs_rag: f.needs_rag })),
                 images_uploaded: get().files_array.filter(f => f.type === "image" && !f.error).map(f => ({ name: f.name, base64: f.base64, mime_type: f.mime_type })),
                 toggled_tools: get().toggleTools.reduce((acc, tool) => {
                   acc[tool.id] = tool.enabled;
@@ -236,7 +241,7 @@ appendStreamingChunk: (chunk) =>
 
     fillOldChat: (chatid) =>{
       const chatId=get().curr_chatid;
-      const oldMessages= fetchOldMessages(chatId)
+      const oldMessages= fetchOldMessages(chatid)
       .then((messages) => {
         set((state) => {
           state.Curr_Conversation_array = messages;
@@ -322,6 +327,14 @@ export const user_contextStore = create(immer((set, get) => ({
     updateHistory:false, 
 
     actions: {
+
+       setUpdateHistory: (val) => set((state) => {
+  state.updateHistory = val
+  }),
+
+
+
+
       updateUser: (user_data) => {
         set((state) => {
           state.user_id = user_data.userid;

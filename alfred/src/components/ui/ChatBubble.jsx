@@ -5,6 +5,7 @@ import { usechatStore } from '@/services/contextStrore'
 import { useShallow } from 'zustand/react/shallow'
 import Markdown from './Markdown'
 import ToolBar from './ToolBar'
+import MessageFileChips from '../FileChip'
 
 const ChatBubble = ({ index, lastindex, role, content, meta_data }) => {
   const isStreaming = usechatStore(useShallow((state) => state.isStreaming));
@@ -14,7 +15,6 @@ const ChatBubble = ({ index, lastindex, role, content, meta_data }) => {
   const cachedToolsRef = useRef([]);
 
   const isLastMessage = index === lastindex;
-
 
   useEffect(() => {
     if (isStreaming && isLastMessage && role === "ai" && tool_array?.length > 0) {
@@ -90,14 +90,17 @@ return (
           <Markdown message={displayText} meta_data={meta_data} />
         </>
       ) : (
-        <p style={{ 
-          wordBreak: "break-word", 
-          overflowWrap: "break-word",
-          whiteSpace: "pre-wrap",
-          margin: 0,
-        }}>
-          {displayText}
-        </p>
+        <>
+    <MessageFileChips files={[...(meta_data?.files_uploaded ?? []), ...(meta_data?.images_uploaded ?? [])] || []} />
+    <p style={{ 
+      wordBreak: "break-word", 
+      overflowWrap: "break-word",
+      whiteSpace: "pre-wrap",
+      margin: 0,
+    }}>
+      {displayText}
+    </p>
+  </>
       )}
     </div>
   </div>

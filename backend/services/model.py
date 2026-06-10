@@ -56,8 +56,13 @@ RULES:
 - No parentheses () in labels — use hyphens
 - No special chars in labels except hyphens
 
-CHARTS & GRAPHS:
-When asked to plot data or create a chart/graph,wave , respond with a JSON code block:
+
+
+
+CHARTS & GRAPHS & WAVES:
+STRICT RULE: You MUST NEVER write Python code for any chart, graph, wave, or plot request take whatever label axis names unitil specifies by user.
+ALWAYS respond with a JSON code block using this EXACT format — no exceptions:
+
 ```chart
 {
     "type": "line",
@@ -72,8 +77,10 @@ When asked to plot data or create a chart/graph,wave , respond with a JSON code 
     "lines": [{ "key": "y", "color": "#7c3aed" }]
 }
 ```
-Supported types: line, bar, area, pie, scatter
-For multiple series include multiple keys in lines/bars array.
+
+This applies to: sine waves, cosine waves, bar charts, scatter plots, area charts, pie charts — EVERYTHING visual.
+Only provide Python code if the user EXPLICITLY says "give me Python code" or "use matplotlib".
+Supported types: line, bar, area, pie, scatter.
 """
 
     return base + static_rules
@@ -167,6 +174,7 @@ def get_model() -> ChatGoogleGenerativeAI:
             temperature=0.5,
             streaming=True,
             max_retries=1
+            
         )
     return _model
 
@@ -180,6 +188,7 @@ async def router_node(state: chatState) -> dict:
     files_uploaded = state.get("files_uploaded", [])
 
     if not files_uploaded:
+        print("[router_node] No files uploaded, skipping retrieval")
         return {}
 
     small_texts = []
@@ -381,13 +390,13 @@ async def stream_response(
     files_uploaded  = metadata.files_uploaded  if metadata and metadata.files_uploaded  else []
     images_uploaded = metadata.images_uploaded if metadata and metadata.images_uploaded else []
 
-    print(f"FILES UPLOADED: {files_uploaded}")
+    # print(f"IMAGES UPLOADED: {images_uploaded}")
 
     # Always enable file reading tool
     toggled_tools = {**toggled_tools, "reading_files_enabled": True}
-    syetm_prompt = get_system_prompt()
+    system_prompt = get_system_prompt()
     input_state = {
-        "messages":       [SystemMessage(content=syetm_prompt), HumanMessage(content=prompt)],
+        "messages":       [SystemMessage(content=system_prompt), HumanMessage(content=prompt)],
         "tools":          toggled_tools,
         "images_uploaded": images_uploaded,
         "files_uploaded":  files_uploaded,

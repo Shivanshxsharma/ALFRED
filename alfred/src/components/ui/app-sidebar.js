@@ -55,7 +55,7 @@ const email = user_contextStore(useShallow((state) => state.email));
 const initialHistory = user_contextStore(useShallow((state) => state.chat_titles));
 const updateHistory  = user_contextStore(useShallow((state) => state.updateHistory));
 
-const {setcurr_chatid} = usechatStore(useShallow((state) => state.actions.setcurr_chatid)); 
+const setcurr_chatid = usechatStore(useShallow((state) => state.actions.setcurr_chatid)); 
 const curr_chatid = usechatStore(useShallow((state) => state.curr_chatid));
 
 const [history, setHistory]     = useState([]); // local state for chat history

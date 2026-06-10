@@ -98,6 +98,7 @@ const [hoveredIndex, setHoveredIndex] = useState(null);
            meta_data={message.meta_data}
            tool_array={tool_array}        // live tools during streaming
            isLastMessage={index === Curr_Conversation_array.length - 1}
+            // files uploaded with the message
          />
 
 {!isStreaming && message.role == "ai" ? (
