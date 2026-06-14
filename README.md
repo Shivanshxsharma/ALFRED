@@ -1,7 +1,6 @@
 <div align="center">
 
 <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;">
-  <img width="96" height="96" alt="Alfred Icon" src="https://github.com/user-attachments/assets/6d960d79-5d39-469d-99ab-395e70246a63" />
   <img width="240" height="60" alt="Alfred Logo" src="https://github.com/user-attachments/assets/6c1af047-8f64-4d8e-8814-d95827b72709" />
 </div>
 
