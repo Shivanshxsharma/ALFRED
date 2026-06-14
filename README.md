@@ -1,6 +1,6 @@
 ﻿<div align="center">
 
-<img width="96" height="96" alt="icon1" src="https://github.com/user-attachments/assets/6d960d79-5d39-469d-99ab-395e70246a63" />
+<img width="96" height="96" alt="icon1" src="https://github.com/user-attachments/assets/6d960d79-5d39-469d-99ab-395e70246a63" />/n
 <img width="200" height="45" alt="high-resolution-color-logo (2)" src="https://github.com/user-attachments/assets/6c1af047-8f64-4d8e-8814-d95827b72709" />
 
 # 🎩 Alfred
