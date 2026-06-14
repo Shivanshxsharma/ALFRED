@@ -4,7 +4,6 @@
   <img width="240" height="60" alt="Alfred Logo" src="https://github.com/user-attachments/assets/6c1af047-8f64-4d8e-8814-d95827b72709" />
 </div>
 
-# 🎩 Alfred
 
 **A full-stack AI assistant built as a product — not a prototype.**
 
