@@ -1,7 +1,7 @@
 ﻿<div align="center">
 
 <img width="96" height="96" alt="icon1" src="https://github.com/user-attachments/assets/6d960d79-5d39-469d-99ab-395e70246a63" />
-<img width="800" height="800" alt="high-resolution-color-logo" src="https://github.com/user-attachments/assets/bf8e6fda-a708-475c-aef9-1d6b194c2b61" />
+<img width="80" height="80" alt="high-resolution-color-logo" src="https://github.com/user-attachments/assets/bf8e6fda-a708-475c-aef9-1d6b194c2b61" />
 
 # 🎩 Alfred
 
