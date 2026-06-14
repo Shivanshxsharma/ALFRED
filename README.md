@@ -1,7 +1,9 @@
-﻿<div align="center">
+<div align="center">
 
-<img width="96" height="96" alt="icon1" src="https://github.com/user-attachments/assets/6d960d79-5d39-469d-99ab-395e70246a63" />/n
-<img width="200" height="45" alt="high-resolution-color-logo (2)" src="https://github.com/user-attachments/assets/6c1af047-8f64-4d8e-8814-d95827b72709" />
+<div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+  <img width="96" height="96" alt="Alfred Icon" src="https://github.com/user-attachments/assets/6d960d79-5d39-469d-99ab-395e70246a63" />
+  <img width="240" height="60" alt="Alfred Logo" src="https://github.com/user-attachments/assets/6c1af047-8f64-4d8e-8814-d95827b72709" />
+</div>
 
 # 🎩 Alfred
 
@@ -24,7 +26,7 @@
 
 Alfred is an AI assistant designed from the ground up to work **as a personal ai agent** 
 
-Most agents are easy to build. A few API calls, a prompt, a tool or two. Alfred is built around the harder problems: streaming that doesn't drop, a RAG pipeline that retrieves the right thing on follow-up questions, response times that stay consistent, and a state machine that handles complex multi-step reasoning without breaking.
+Most agents are easy to build. A few API calls, a prompt, a tool or two. Alfred is built around the harder problems: streaming that doesn't drop, a RAG pipeline that retrieves the right thing on follow-up questions.
 
 The architecture was designed before a single line was written — validated against real engineering approaches from production systems, not just tutorials.
 
@@ -274,7 +276,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 Most AI assistants are built to demo well. Alfred is built to work well.
 
-The architecture was designed before any code was written — structure first, implementation second. Approaches were validated against production engineering patterns, not just quickstart guides. Every architectural decision (SSE over WebSockets, Pinecone over Atlas Vector Search, LangGraph state machine over simple chains) has a reason behind it.
+The architecture was designed before any code was written — structure first, implementation second. Approaches were validated against production engineering patterns, not just quickstart guides.
 
 AI was used as a tool in this process — to validate thinking, challenge approaches, and accelerate implementation. The decisions were made by a human who understood the tradeoffs.
 
