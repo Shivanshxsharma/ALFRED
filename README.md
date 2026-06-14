@@ -1,9 +1,7 @@
 ﻿<div align="center">
 
-<p align="center">
-  <img src="<img width="96" height="96" alt="icon1" src="https://github.com/user-attachments/assets/20640850-9abf-4977-97b2-b077b8299ef5" />
-" alt="Logo" width="200" height="200">
-</p>
+<img width="96" height="96" alt="icon1" src="https://github.com/user-attachments/assets/6d960d79-5d39-469d-99ab-395e70246a63" />
+
 # 🎩 Alfred
 
 **A full-stack AI assistant built as a product — not a prototype.**
