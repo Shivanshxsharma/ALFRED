@@ -18,6 +18,15 @@ const ChatContainer = () => {
   const router = useRouter();
   const {chatId} = useParams(); 
   
+
+
+
+
+
+
+
+
+  
 useEffect(() => {
 usechatStore.getState().actions.setcurr_chatid(chatId);
 user_contextStore.getState().actions.fetchUserInfo(router);

@@ -30,14 +30,16 @@ import { shallow } from 'zustand/shallow';
 import { useCallback, useEffect, useRef, useState } from "react";
 
 
-import { fetchuserHistory } from "@/services/fetch_info";
+import { fetchuserHistory , fireSessionEnd } from "@/services/fetch_info";
 import { useParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 
-const items = [
-  { title: "New chat", url: "/", icon: Pen },
 
-];
+
+
+
+
 
 
 
@@ -62,7 +64,7 @@ const [history, setHistory]     = useState([]); // local state for chat history
   const [page, setPage]           = useState(1.5);           // next page to fetch
   const [hasMore, setHasMore]     = useState(true);
   const [loading, setLoading]     = useState(false);
-
+const router = useRouter();
   
   
   const sentinelRef = useRef(null);
@@ -113,6 +115,27 @@ const fetchHistory = useCallback(async (page) => {
     observer.observe(sentinel);
     return () => observer.disconnect();
   }, [fetchHistory, page, history.length, initialHistory]);
+
+
+
+
+const handleNewChat = (curr_chatid) => {
+  console.log("New chat initiated. Ending session for chatId:", curr_chatid);
+  const oldChatId = curr_chatid;  // capture current chat ID before resetting
+
+  fireSessionEnd(oldChatId)   // fire-and-forget, non-blocking
+
+  // // router.push("/chats")       // navigate immediately, don't wait
+}
+
+ 
+
+const items = [
+  { title: "New chat", url: "/", icon: Pen , handler: handleNewChat},
+
+];
+
+
 
 
 
@@ -179,7 +202,7 @@ useEffect(() => {
             <SidebarMenu>
               {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild onClick={() => item.handler(curr_chatid)}>
                     <a href={item.url}>
                       <item.icon />
                       <span>{item.title}</span>

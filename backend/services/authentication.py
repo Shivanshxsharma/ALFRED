@@ -20,10 +20,10 @@ REDIRECT_URI = os.getenv("REDIRECT_URI")
 
 
 # Login Function ----------------------------------------------------------------------------------------
-def log_in(user_email,password,db):
+async def log_in(user_email,password,db):
     
     try:
-        user=db["users"].find_one({"email":user_email})
+        user=await db["users"].find_one({"email":user_email})
 
         if user is None:
             raise HTTPException(
@@ -40,12 +40,14 @@ def log_in(user_email,password,db):
         
        
         access_token=create_token({"userid":user["userid"],"email":user["email"]})
-        refresh_token=update_refresh_token(user["userid"],user["email"],db)
+        refresh_token=await update_refresh_token(user["userid"],user["email"],db)
         return {
 
             "access_token":access_token,"refresh_token":refresh_token
              }
     
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -60,9 +62,9 @@ def log_in(user_email,password,db):
 
 
 # Sign Up Function ----------------------------------------------------------------------------------------
-def sign_up(first_name,last_name,email,password,db):
+async def sign_up(first_name,last_name,email,password,db):
     try:
-        existing_user=db["users"].find_one({"email":email})
+        existing_user=await db["users"].find_one({"email":email})
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -81,11 +83,13 @@ def sign_up(first_name,last_name,email,password,db):
         }
 
         access_token=create_token({"userid":userid,"email":email})
-        result=db["users"].insert_one(new_user)
+        await db["users"].insert_one(new_user)
 
         return {
             "access_token":access_token,"refresh_token":new_user["refresh_token"]
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -148,14 +152,16 @@ def verify_token(token: str):
 
 # Update Refresh Token ----------------------------------------------------------------------------------------`
 
-def update_refresh_token(user_id: str, email: str, db):
+async def update_refresh_token(user_id: str, email: str, db):
     try:
         new_refresh_token = create_token({'userid': user_id, 'email': email}, expires_delta=timedelta(days=7))
-        db["users"].update_one(
+        await db["users"].update_one(
             {'userid': user_id},
             {'$set': {'refresh_token': new_refresh_token}}
         )
         return new_refresh_token
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -203,7 +209,7 @@ async def log_in_with_google(code:str,db):
             )
            user_info = user_res.json()
            # user_info = { "email": "john@gmail.com", "name": "John", "picture": "https://..." }
-        return get_or_create_user(user_info,db)
+        return await get_or_create_user(user_info,db)
         
 
 
@@ -218,15 +224,15 @@ async def log_in_with_google(code:str,db):
     
 
 
-def get_or_create_user(user_info:dict,db):
+async def get_or_create_user(user_info:dict,db):
  try:
     email = user_info["email"]
     name = user_info.get("name", "")
     first_name, last_name = (name.split(" ", 1) + [""])[:2]
 
-    user = db["users"].find_one({"email": email})
+    user = await db["users"].find_one({"email": email})
     if user:
-        update_refresh_token(user["userid"], email, db)
+        await update_refresh_token(user["userid"], email, db)
         access_token = create_token({"userid": user["userid"], "email": email})
         return {
             "access_token": access_token,
@@ -245,12 +251,14 @@ def get_or_create_user(user_info:dict,db):
             "provider": "google"
         }
         
-        result = db["users"].insert_one(new_user)
+        await db["users"].insert_one(new_user)
         access_token=create_token({"userid":userid,"email":email})
 
         return  {
             "access_token":access_token,"refresh_token":new_user["refresh_token"]
         }
+ except HTTPException:
+     raise
  except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

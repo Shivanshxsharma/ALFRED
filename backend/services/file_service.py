@@ -20,7 +20,7 @@ def compute_hash(content):
 
 
 async def check_duplicate(file,file_hash, db, user_id):
-    existing = db.files.find_one({"file_hash": file_hash, "user_id": user_id})
+    existing = await db.files.find_one({"file_hash": file_hash, "user_id": user_id})
     if existing:
         return {
             "name": file.filename,
@@ -65,7 +65,7 @@ async def store_file_doc(file_hash, file, path, user_id, needs_rag, char_count, 
         "embedding_status": "pending" if needs_rag else "not_needed",
         "created_at": datetime.now()
     }
-    db.files.insert_one(file_doc)
+    await db.files.insert_one(file_doc)
     _cache[file_hash] = text if not needs_rag else None  # cache non-RAG texts for quick retrieval
 
 
@@ -114,7 +114,7 @@ async def embed_and_index(
         )
         if fetch_result.vectors:
             print(f"[embed_and_index] Already indexed in Pinecone: {file_hash}, skipping")
-            db.files.update_one(
+            await db.files.update_one(
                 {"file_hash": file_hash},
                 {"$set": {"embedding_status": "indexed"}}
             )
@@ -163,7 +163,7 @@ async def embed_and_index(
         await asyncio.to_thread(pinecone_index.upsert, vectors=vectors)
         print(f"[embed_and_index] Upserted {len(vectors)} vectors into Pinecone")
         # ── 6. mark as indexed ───────────────────────────────────────────────
-        db.files.update_one(
+        await db.files.update_one(
             {"file_hash": file_hash},
             {"$set": {
                 "embedding_status": "indexed",
@@ -175,7 +175,7 @@ async def embed_and_index(
 
     except Exception as e:
         print(f"[embed_and_index] ❌ Failed for {file_hash}: {e}")
-        db.files.update_one(
+        await db.files.update_one(
             {"file_hash": file_hash},
             {"$set": {"embedding_status": "failed", "error": str(e)}}
         )
@@ -200,7 +200,7 @@ async def get_file_text(file_hash: str, db) -> str | None:
         return _cache[file_hash]
     
     # DB query only on cache miss
-    doc =  db.files.find_one(
+    doc = await db.files.find_one(
         {"file_hash": file_hash},
         {"full_text": 1}
     )

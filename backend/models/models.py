@@ -34,6 +34,7 @@ class chats(BaseModel):
      chatId: str = Field(...,description="required id of chat")
      title:str=Field(description="title of chat")
      messages:List[Messages]=Field(...,description="List of dictionaries which are Messages")
+     wiki_summarized_count: int = Field(0, description="Number of messages that have been summarized for wiki context")
 
 
 #     =========request models for validation============

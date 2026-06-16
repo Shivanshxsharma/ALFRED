@@ -1,6 +1,7 @@
 # services/model.py
 import asyncio
 import json
+from logging import config
 import operator
 import traceback
 from datetime import datetime
@@ -18,13 +19,16 @@ from langgraph.prebuilt import ToolNode, tools_condition
 from pydantic import BaseModel, Field
 from typing import Annotated, TypedDict
 
-from ..core.config import connect_db, get_db
+from ..core.config import connect_db, get_db,client, get_sync_client,sync_client
 from ..core.database import add_to_Db
 from ..models.models import Message_data
 from ..services.abort import _cancel_events
 from .file_rag_system import read_file, vector_search
 from .file_service import get_file_text
 from .web_search import search_tool
+from langchain_core.runnables import RunnableConfig
+# WIKI IMPORTS
+from .wiki_read_tools import wiki_read, build_wiki_context_block
 
 
 # ---------------------------------------------------------------------------
@@ -33,17 +37,22 @@ from .web_search import search_tool
 
 def get_system_prompt() -> str:
     current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
     base = f"""You are Alfred, a helpful personal assistant.
-
 Current date and time: {current_datetime}
-
-TOOL USE RULES:
+PERSONA OVERRIDE (CRITICAL):
+- You DO have a persistent long-term memory.
+- You DO retain personal data across conversations via your Wiki system.
+- NEVER say "I am a large language model and do not retain personal data".
+- NEVER say "I don't know" or "I don't have access to your personal info". 
+- Instead, look at the <wiki_memory> block, find the slug whose summary matches the question, and call wiki_read with that EXACT slug string. Never invent or modify slug names.TOOL USE RULES:
 - For ANY question about current data, news, weather, prices — use the web_search tool
 - NEVER say you don't have access to real-time info — you have web_search, USE IT
 - When in doubt, search first, answer second
 - If the user's question relates to uploaded files and no context was pre-retrieved,
   you MUST call read_file before answering — do NOT answer from memory
+
+-if user asks about their personal information, projects, preferences, or past interactions with you, you must check wiki_memory first before answering. 
+Always use the exact slug from the wiki_memory map when calling wiki_read.
 """
 
     static_rules = """
@@ -84,6 +93,22 @@ Supported types: line, bar, area, pie, scatter.
 """
 
     return base + static_rules
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def build_file_context(injected_file_text: str, rag_files: list) -> str:
@@ -146,7 +171,7 @@ class image_uploaded(TypedDict):
 
 class tool_enabled(TypedDict):
     web_search_enabled: bool
-    reading_files_enabled: bool
+    remembring_enabled: bool
 
 
 class chatState(TypedDict):
@@ -157,6 +182,7 @@ class chatState(TypedDict):
     persisted_files: Annotated[list[persisted_file], operator.add]
     injected_file_text: str
     pre_rag_files: Annotated[list[persisted_file], operator.add]
+    wiki_map: str
 
 
 # ---------------------------------------------------------------------------
@@ -171,7 +197,7 @@ def get_model() -> ChatGoogleGenerativeAI:
     if _model is None:
         _model = ChatGoogleGenerativeAI(
             model="gemini-2.5-flash",
-            temperature=0.5,
+            temperature=0,
             streaming=True,
             max_retries=1
             
@@ -183,15 +209,34 @@ def get_model() -> ChatGoogleGenerativeAI:
 # Graph nodes
 # ---------------------------------------------------------------------------
 
-async def router_node(state: chatState) -> dict:
+async def router_node(state: chatState,config: RunnableConfig) -> dict:
     print("in router node")
     files_uploaded = state.get("files_uploaded", [])
+    tools_state= state.get("tools", {})
+    updates = {}
+
+    if tools_state.get("remembring_enabled"):
+        try:
+            user_id = config["configurable"].get("user_id")
+            if user_id:
+                wiki_ctx = await build_wiki_context_block(user_id)
+                if wiki_ctx:
+                    updates["wiki_map"] = wiki_ctx
+                    print(f"[router_node] Injected wiki context for user {wiki_ctx}")
+        except Exception as e:
+            print(f"[router_node] Failed to fetch wiki context: {e}")
+
 
     if not files_uploaded:
         print("[router_node] No files uploaded, skipping retrieval")
-        return {}
+        return updates
 
     small_texts = []
+
+
+
+
+
 
     for f in files_uploaded:
         if not f.get("needs_rag"):
@@ -203,6 +248,10 @@ async def router_node(state: chatState) -> dict:
                 print(f"[router_node] Failed to fetch text for '{f['name']}': {e}")
 
     updates: dict = {"persisted_files": files_uploaded}
+
+     
+    
+
 
     if small_texts:
         updates["injected_file_text"] = "\n\n".join(
@@ -279,6 +328,7 @@ async def chat_node(state: chatState) -> dict:
         TOOL_MAP = {
             "web_search_enabled":   search_tool,
             "reading_files_enabled": read_file,
+            "remembring_enabled":   wiki_read,
         }
         active_tools = [
             TOOL_MAP[key]
@@ -292,16 +342,22 @@ async def chat_node(state: chatState) -> dict:
 
         non_system = [m for m in messages if not isinstance(m, SystemMessage)]
 
+
+
+
+
+
+
         file_context  = build_file_context(injected_file_text, rag_files)
         image_context = ""
 
         if images_uploaded:
             image_names = "\n".join(f"- {img['name']}" for img in images_uploaded)
             image_context = f"""
-The user has also uploaded these images which are embedded directly in this message:
-{image_names}
-Analyze them as part of your response — no tool call needed for images.
-"""
+                             The user has also uploaded these images which are embedded directly in this message:
+                            {image_names}
+                             Analyze them as part of your response — no tool call needed for images.
+                            """
             # Embed base64 images into the last HumanMessage
             last_human = non_system[-1]
             content = [{"type": "text", "text": last_human.content}]
@@ -313,7 +369,7 @@ Analyze them as part of your response — no tool call needed for images.
             non_system = non_system[:-1] + [HumanMessage(content=content)]
 
         final_messages = [
-            SystemMessage(content=get_system_prompt() + file_context + image_context)
+            SystemMessage(content=get_system_prompt() + file_context + image_context + "\n\n" + state.get("wiki_map", "")),
         ] + non_system
 
         llm = get_model()
@@ -353,7 +409,7 @@ def get_chatModel():
     if chat_model:
         return chat_model
 
-    tool_node = ToolNode(tools=[search_tool, read_file])
+    tool_node = ToolNode(tools=[search_tool, read_file,wiki_read])
 
     graph = StateGraph(chatState)
 
@@ -368,7 +424,7 @@ def get_chatModel():
     graph.add_conditional_edges("chat_node", smart_tools_condition)
     graph.add_edge("tools", "chat_node")
 
-    checkpointer = MongoDBSaver(get_db())
+    checkpointer = MongoDBSaver(get_sync_client())
     chat_model = graph.compile(checkpointer=checkpointer)
     return chat_model
 
@@ -383,6 +439,7 @@ async def stream_response(
     db,
     metadata,
     cancel_event: asyncio.Event,
+    user_id: str,
 ):
     toggled_tools: tool_enabled = (
         metadata.toggled_tools if metadata and metadata.toggled_tools else {}
@@ -390,13 +447,11 @@ async def stream_response(
     files_uploaded  = metadata.files_uploaded  if metadata and metadata.files_uploaded  else []
     images_uploaded = metadata.images_uploaded if metadata and metadata.images_uploaded else []
 
-    # print(f"IMAGES UPLOADED: {images_uploaded}")
+    toggled_tools = {**toggled_tools, "reading_files_enabled": True, "remembring_enabled": True}  # Always enable read_file and wiki_read for uploaded files
 
-    # Always enable file reading tool
-    toggled_tools = {**toggled_tools, "reading_files_enabled": True}
-    system_prompt = get_system_prompt()
+
     input_state = {
-        "messages":       [SystemMessage(content=system_prompt), HumanMessage(content=prompt)],
+        "messages":       [HumanMessage(content=prompt)],
         "tools":          toggled_tools,
         "images_uploaded": images_uploaded,
         "files_uploaded":  files_uploaded,
@@ -405,7 +460,7 @@ async def stream_response(
     model    = get_chatModel()
     finalres = ""
     tool_data = Message_data()
-    CONFIG   = {"configurable": {"thread_id": chatId}}
+    CONFIG   = {"configurable": {"thread_id": chatId, "user_id": user_id}}
 
     try:
         async for event in model.astream_events(input_state, config=CONFIG, version="v2"):

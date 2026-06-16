@@ -100,3 +100,66 @@ export async function fetchOldMessages(chatId) {
 
   return { url: `https://accounts.google.com/o/oauth2/v2/auth?${params}`, state }
 }
+
+
+
+
+
+
+
+
+
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Add these two functions to your existing fetch_info.js
+// The existing axios `api` instance is already configured correctly:
+//   - baseURL: 'http://localhost:8000'
+//   - withCredentials: true   ← sends your auth cookies
+//   - 401 interceptor         ← auto-refreshes token if expired
+// ─────────────────────────────────────────────────────────────────────────────
+
+
+// ── Trigger 1: New Chat button ────────────────────────────────────────────────
+//
+// Uses your axios api instance — gets the 401 refresh interceptor for free.
+// Call this BEFORE navigating to the new chat page.
+// Fire-and-forget — no need to await at the call site.
+//
+// Usage:
+//   import { fireSessionEnd } from "@/store/fetch_info"
+//   fireSessionEnd(curr_chatid)   // non-blocking
+//   router.push("/chats")
+//
+export async function fireSessionEnd(chatId) {
+  if (!chatId) return;
+  try {
+    await api.post(`/session-end/${chatId}`);
+  } catch (error) {
+    // Non-fatal — summarizer failure should never block the user
+    console.error("[session-end] axios trigger failed:", error);
+  }
+}
+
+
+// ── Trigger 2: Tab close (beforeunload) ───────────────────────────────────────
+//
+// Uses navigator.sendBeacon — the ONLY reliable way to fire on tab close.
+// axios / fetch get cancelled when the tab closes before they complete.
+// sendBeacon is queued by the browser and guaranteed to finish even mid-close.
+//
+// ⚠️  sendBeacon is cross-origin here (localhost:3000 → localhost:8000).
+//     Cookies ARE sent as long as your FastAPI CORS is configured with:
+//       allow_origins=["http://localhost:3000"]
+//       allow_credentials=True
+//     Which you already have in your CORSMiddleware.
+//
+// Usage: call this inside a beforeunload event listener only.
+//
+export function fireSessionEndBeacon(chatId) {
+  if (!chatId) return;
+  // sendBeacon sends a POST — no body needed, auth comes from cookies
+  navigator.sendBeacon(
+    `http://localhost:8000/session-end/${chatId}`
+  );
+}

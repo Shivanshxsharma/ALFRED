@@ -15,7 +15,7 @@ async def add_to_Db(new_chat:bool,user_id:str,chatId:str,prompt:dict,db):
     if new_chat is True:
         from ..services.model  import gen_chat_title
         title=await gen_chat_title(prompt)
-        db["users"].update_one(
+        await db["users"].update_one(
         {"userid": user_id},
         {"$push": {"chat_history": {"chatId":chatId,"title":title}}} 
          )
@@ -23,15 +23,17 @@ async def add_to_Db(new_chat:bool,user_id:str,chatId:str,prompt:dict,db):
         new_chat_message={
          "role":role,
          "content":content,
-         "meta_data":meta_data
+         "meta_data":meta_data,
+         
          }
         new_chat_dict={
            "chatId":chatId,
            "title":title,
-            "messages":[new_chat_message]
+            "messages":[new_chat_message],
+            "wiki_summarized_count":0
         }
 
-        db["chats"].insert_one(new_chat_dict)
+        await db["chats"].insert_one(new_chat_dict)
       
     else:
      message={
@@ -40,11 +42,13 @@ async def add_to_Db(new_chat:bool,user_id:str,chatId:str,prompt:dict,db):
        "meta_data":meta_data
      }
 
-     db["chats"].update_one(
+     await db["chats"].update_one(
         {'chatId':chatId},
         {"$push":{"messages":message}}
      )
 
+ except HTTPException:
+        raise
  except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -61,7 +65,7 @@ async def getUserInfo(userid:str,email:str,db):
                detail="userid and email are required"
            )
         
-        user=db["users"].find_one({"userid":userid,"email":email})
+        user=await db["users"].find_one({"userid":userid,"email":email})
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -92,12 +96,14 @@ async def getUserInfo(userid:str,email:str,db):
 
 async def getChatHistory(userid,page,page_size,db):
     try:
-        user=db["users"].find_one({"userid":userid})
+        user=await db["users"].find_one({"userid":userid})
         hist = user["chat_history"][::-1][page:page+page_size]
         return {
             "items": hist,
             "hasMore": len(user["chat_history"]) > page + page_size
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -109,7 +115,7 @@ async def getChatHistory(userid,page,page_size,db):
 
 async def getChatMessages(chatId:str,db):
         try:
-            chat=db["chats"].find_one({"chatId":chatId})
+            chat=await db["chats"].find_one({"chatId":chatId})
             if not chat:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,

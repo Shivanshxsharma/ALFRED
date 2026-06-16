@@ -1,4 +1,5 @@
 import asyncio
+from multiprocessing import process
 import os
 import traceback
 from urllib import response
@@ -10,6 +11,11 @@ import shutil
 from pathlib import Path
 from fastapi import BackgroundTasks, FastAPI, Depends, Form,HTTPException, status,WebSocket,WebSocketDisconnect,Response,Request,UploadFile
 from uuid import uuid4
+
+from fastapi.concurrency import asynccontextmanager
+import pymongo
+
+from backend.services.wiki_db import ensure_wiki_indexes, init_wiki
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
@@ -18,7 +24,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 from fastapi.responses import StreamingResponse
 from datetime import datetime
 from ..models.models import authenticate_User, chats, new_Chat,create_User,add_to_Chat,delete_chat,Messages,prompt_req,OAuthCallbackRequest
-from ..core.config import connect_db,get_db
+from ..core.config import DATABASE_NAME, close_db, connect_db,get_db, get_sync_client
 from pymongo.errors import PyMongoError
 from ..services.model import get_chatModel, get_model,chat_model, stream_response
 from ..services.authentication import log_in,sign_up,verify_token,update_refresh_token,create_token,log_in_with_google
@@ -26,9 +32,46 @@ from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.messages import BaseMessage,HumanMessage,SystemMessage
 from ..core.database  import add_to_Db,getUserInfo,getChatHistory,getChatMessages
 from ..services.abort import _cancel_events
-from ..services.file_service import embed_and_index, store_file_doc, extract_text, check_duplicate, compute_hash
+from ..services.file_service import embed_and_index, store_file_doc, extract_text, check_duplicate, compute_hash,pinecone_index, embeddings_model
+from ..services.wiki_db import init_wiki, ensure_wiki_indexes , wiki_embed_fn
+from backend.services.wiki_summarizer import run_summarizer
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from langgraph.checkpoint.mongodb import MongoDBSaver
 
-app=FastAPI()
+
+
+
+
+
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+
+
+    # Motor client (for all routes)
+    await connect_db()
+    motor_db = get_db()
+    sync_client = get_sync_client()  # Initialize PyMongo client for LangGraph checkpointer
+
+    # Wiki init — reuse existing motor client
+    init_wiki(
+        pinecone_index = pinecone_index,
+        embed_fn       = wiki_embed_fn,
+    )
+    await ensure_wiki_indexes()
+
+    # PyMongo client (for LangGraph checkpointer only)
+
+    yield
+
+    await close_db()
+    sync_client.close()
+
+app = FastAPI(lifespan=lifespan)
+
+
+
 
 origins = [
     "http://localhost:3000",  
@@ -43,10 +86,22 @@ app.add_middleware(
 )
 
 
-# Routes
-@app.on_event("startup")
-async def startup():
-     connect_db()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 @app.post("/newChat")
 async def newChat(req:new_Chat,db=Depends(get_db)):
@@ -57,13 +112,14 @@ async def newChat(req:new_Chat,db=Depends(get_db)):
     first_msg_dict = req.First_Message.model_dump()
     new_chat_dict={
      "title":"new chat",
-     "messages":[first_msg_dict]   
+     "messages":[first_msg_dict],
+     "wiki_summarized_count":0   
     }
     
-    inserted_chat=db["chats"].insert_one(new_chat_dict)
+    inserted_chat=await db["chats"].insert_one(new_chat_dict)
     new_chat_id=str(inserted_chat.inserted_id)
 
-    user_dict = db["users"].update_one(
+    user_dict = await db["users"].update_one(
     {"_id": ObjectId(req.userid)},
     {"$push": {"chat_history": new_chat_id}} 
 )
@@ -98,12 +154,12 @@ async def stream_endpoint(req: add_to_Chat, db=Depends(get_db)):
         is_new_chat = req.is_new_chat
         user_id = req.user_id
         metadata = req.prompt.meta_data
-        
+
         await add_to_Db(is_new_chat, user_id, chatId, {"role": "human", "content": query, "meta_data": metadata.model_dump()}, db)
         cancel_event = asyncio.Event()
         _cancel_events[chatId] = cancel_event
         return StreamingResponse(
-            stream_response(query, chatId, db, metadata,cancel_event),
+            stream_response(query, chatId, db, metadata,cancel_event,user_id),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
@@ -131,7 +187,7 @@ async def stream_endpoint(req: add_to_Chat, db=Depends(get_db)):
 async def login_endpoint(res:Response,req:authenticate_User,db=Depends(get_db)):
 
    try:
-    access_cred = log_in(req.email,req.password_hash,db)
+    access_cred = await log_in(req.email,req.password_hash,db)
 
     res.set_cookie(
         key="rt",
@@ -162,7 +218,7 @@ async def login_endpoint(res:Response,req:authenticate_User,db=Depends(get_db)):
 async def signup_endpoint(res:Response,req:create_User,db=Depends(get_db)):
 
    try:
-    access_cred = sign_up(req.First_Name,req.Last_Name,req.email,req.password_hash,db)
+    access_cred = await sign_up(req.First_Name,req.Last_Name,req.email,req.password_hash,db)
 
     res.set_cookie(
         key="rt",
@@ -210,7 +266,7 @@ async def fetchUserInfo(req:Request,db=Depends(get_db)):
 async def refresh_endPoint(req:Request,res:Response,db=Depends(get_db)):
     try:
         data=verify_token(req.cookies.get('rt'))
-        refreshed_token=update_refresh_token(data['userid'],data['email'],db)
+        refreshed_token=await update_refresh_token(data['userid'],data['email'],db)
         acess_token=create_token(data)
 
         res.set_cookie(
@@ -431,6 +487,54 @@ async def abort_stream(chatId: str):
 
 
 
+
+
+
+
+
+
+
+
+#memory management
+
+
+
+
+
+# ── ADD THIS IMPORT at the top ─────────────────────────────────
+
+# ── ADD THIS ENDPOINT at the bottom (above #memory management) ─
+@app.post("/session-end/{chatId}")
+async def session_end(
+    chatId: str,
+    req: Request,
+    background_tasks: BackgroundTasks,
+    db=Depends(get_db)
+):
+    try:
+        data = verify_token(req.cookies.get('at'))
+        if not data:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or missing access token"
+            )
+            
+        # Extract the user ID from your JWT token payload
+        user_id = data["userid"]
+        
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User ID not found in token"
+            )
+
+        # Pass the user_id into the summarizer
+        background_tasks.add_task(run_summarizer, chatId, db, user_id)
+        
+        return {"ok": True}
+        
+    except HTTPException as he:
+        raise he
 
 
 
