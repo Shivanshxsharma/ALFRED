@@ -230,7 +230,7 @@ Alfred remembers who you are across every session. Not just the current conversa
 
 **Vector RAG** — embeddings + cosine similarity on every turn. Accurate, but adds an API call and vector search to every message. Overkill for small memory sets. Karpathy himself noted this is unnecessary at lower scale. Also risks surfacing semantically similar but contextually irrelevant old memories.
 
-**LLM Wiki** — chosen because it only loads what's needed, retrieval is a fast DB query with no embeddings, and the LLM describes intent in natural language while Python does the matching.
+**LLM Wiki** — chosen because it only loads what's needed, retrieval is a fast DB query with no embeddings, and the LLM selects the exact page to read from a structured wiki map injected into its context.
 
 > Vector search is planned as a future upgrade when a user's memory grows beyond 20+ pages. The current architecture is designed to swap the retrieval backend without changing the LLM interface.
 
@@ -245,24 +245,19 @@ Alfred remembers who you are across every session. Not just the current conversa
 │  Session ends    │  User message    │   Background job (3 AM)   │
 │       │          │       │          │          │                 │
 │  Summarizer LLM  │  Router node     │  Fetch all user pages     │
-│  compresses conv │  fetches wiki    │          │                 │
-│       │          │  index + scores  │  score = today −          │
+│  compresses conv │  injects wiki    │          │                 │
+│       │          │  map into prompt │  score = today −          │
 │  Page exists?    │       │          │  last_accessed (days)     │
-│  ┌────┴────┐     │  Wiki map        │          │                 │
-│ No       Yes     │  injected into   │    score > 30?            │
-│  │         │     │  system prompt   │   ┌──────┴──────┐         │
+│  ┌────┴────┐     │  LLM reads map   │          │                 │
+│ No       Yes     │  picks exact     │    score > 30?            │
+│  │         │     │  slug to fetch   │   ┌──────┴──────┐         │
 │ Create   Update  │       │          │  Yes            No        │
-│  page    page    │  LLM picks topic │   │              │         │
-│  score=0 reset   │  lowest score    │  Delete        Keep       │
-│  └────┬────┘     │  = most recent   │  page          active     │
-│       │          │       │          │                           │
-│  MongoDB wiki    │  wiki_search()   │                           │
-│  store           │  plain English   │                           │
-│                  │  → keyword match │                           │
-│                  │       │          │                           │
-│                  │  Fast DB query   │                           │
-│                  │  no embeddings   │                           │
-│                  │       │          │                           │
+│  page    page    │  wiki_read(slug) │   │              │         │
+│  score=0 reset   │  exact DB lookup │  Delete        Keep       │
+│  └────┬────┘     │       │          │  page          active     │
+│       │          │  Fast DB query   │                           │
+│  MongoDB wiki    │  no embeddings   │                           │
+│  store           │       │          │                           │
 │                  │  Page returned   │                           │
 │                  │  score → 0       │                           │
 │                  │       │          │                           │
@@ -283,21 +278,29 @@ Every wiki page has a score: `score = today − date of last access (days)`
 
 When the LLM reads a page, score resets to `0`. When topics are ambiguous, the LLM picks the page with the **lowest score** — most recently relevant wins.
 
-#### The wiki_search Tool
+#### The wiki_read Tool
 
-The LLM never has to remember or copy exact slugs. It describes what it needs in plain English and Python does the matching:
+The LLM selects what to read using a **wiki map** injected into its context at the start of every session. The map lists every page with its slug, category, and a one-line summary:
+
+```
+Category: PROJECT
+  - metro-mate: Metro Mate is a project that uses dialect training for LLMs to address language variations in a metropolitan context.
+Category: USER
+  - shivansh: Contains user details — key facts about Shivansh, including his identity, education, and career aspirations.
+```
+
+The LLM reads this map, picks the exact slug it needs, and calls `wiki_read` directly:
 
 ```python
 # LLM calls:
-wiki_search("metro mate project details")
-wiki_search("user's name and background")
+wiki_read("metro-mate")
+wiki_read("shivansh")
 
-# Python scores each page by keyword overlap across:
-# title + slug + category + content[:400]
-# Returns top 1-2 matching pages
+# Python fetches the page by exact slug from MongoDB
+# Resets page score → 0 on access
 ```
 
-**Why not slug-based lookup?** The previous approach gave the LLM an exact slug list and asked it to copy the right one. Gemini generated `"metro-mate-project"` instead of `"metro-mate"`. LLMs generate — they don't copy. `wiki_search` fixes this permanently.
+**Why wiki map + exact slug?** The wiki map gives the LLM full visibility into what memory exists before it decides what to retrieve. Since slugs are shown explicitly in the map, the LLM selects from a known list rather than generating a guess — eliminating slug hallucination entirely. No embeddings, no fuzzy matching, just a fast DB lookup by slug.
 
 #### Memory Stack
 
@@ -310,7 +313,7 @@ wiki_search("user's name and background")
 #### Roadmap for Memory
 
 - [x] Wiki store with slug + category + content
-- [x] `wiki_search` natural language retrieval
+- [x] `wiki_read` with wiki map slug selection
 - [x] Relevancy score decay system
 - [x] Summarizer layer on session end
 - [ ] 3 AM pruning cron job (APScheduler)
@@ -430,7 +433,6 @@ AI was used as a tool in this process — to validate thinking, challenge approa
 ---
 
 <div align="center">
-
 Built by [Shivansh Sharma](https://github.com/Shivanshxsharma) · NSUT Delhi
 
 ⭐ Star this repo if you find it useful
