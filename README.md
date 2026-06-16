@@ -1,4 +1,3 @@
-<img width="124" height="150" alt="alfred_memory_flow" src="https://github.com/user-attachments/assets/19b09bc7-7c92-498a-990d-05f1721ff4cd" />
 <div align="center">
 
 <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;">
@@ -237,271 +236,60 @@ Alfred remembers who you are across every session. Not just the current conversa
 
 #### How Memory Flows
 
-![Alfred Memory Flow](./docs/alfred_memory_flow.svg)
-<svg width="100%" viewBox="0 0 680 820" role="img" xmlns="http://www.w3.org/2000/svg">
-  <title>Alfred Wiki Memory Flow</title>
-  <desc>Three-column flowchart: Ingest, Read, and Prune flows for Alfred's LLM Wiki memory system</desc>
-  <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-      <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-    </marker>
-    <style>
-      text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #1a1a1a; }
-      .th  { font-size: 13px; font-weight: 600; }
-      .ts  { font-size: 11px; font-weight: 400; fill: #555; }
-      .arr { stroke: #888; stroke-width: 1; fill: none; }
-      .div { stroke: #ccc; stroke-width: 0.5; stroke-dasharray: 4 3; fill: none; }
+<img src="https://github.com/user-attachments/assets/19b09bc7-7c92-498a-990d-05f1721ff4cd" width="680" alt="Alfred memory flow — Ingest, Read, Prune flowchart with relevancy decay table"/>
 
-      /* Purple — Ingest accent */
-      .purple rect { fill: #EEEDFE; stroke: #534AB7; stroke-width: 0.5; }
-      .purple .th  { fill: #26215C; }
-      .purple .ts  { fill: #534AB7; }
-
-      /* Teal — Read accent */
-      .teal rect { fill: #E1F5EE; stroke: #0F6E56; stroke-width: 0.5; }
-      .teal .th  { fill: #04342C; }
-      .teal .ts  { fill: #0F6E56; }
-
-      /* Amber — Prune accent */
-      .amber rect { fill: #FAEEDA; stroke: #854F0B; stroke-width: 0.5; }
-      .amber .th  { fill: #412402; }
-      .amber .ts  { fill: #854F0B; }
-
-      /* Gray — neutral */
-      .gray rect { fill: #F1EFE8; stroke: #5F5E5A; stroke-width: 0.5; }
-      .gray .th  { fill: #2C2C2A; }
-      .gray .ts  { fill: #5F5E5A; }
-
-      /* Coral — delete */
-      .coral rect { fill: #FAECE7; stroke: #993C1D; stroke-width: 0.5; }
-      .coral .th  { fill: #4A1B0C; }
-
-      /* wiki_read callout */
-      .amber-strong rect { fill: #FAC775; stroke: #633806; stroke-width: 1; }
-      .amber-strong .th  { fill: #412402; }
-      .amber-strong .ts  { fill: #633806; }
-
-      .footer rect { fill: #F8F8F6; stroke: #ccc; stroke-width: 0.5; }
-      .footer text { fill: #555; font-size: 11px; }
-    </style>
-  </defs>
-
-  <!-- ── Column headers ── -->
-  <g class="purple">
-    <rect x="40" y="28" width="174" height="36" rx="8"/>
-    <text class="th" x="127" y="50" text-anchor="middle">Ingest</text>
-  </g>
-  <g class="teal">
-    <rect x="253" y="28" width="174" height="36" rx="8"/>
-    <text class="th" x="340" y="50" text-anchor="middle">Read</text>
-  </g>
-  <g class="amber">
-    <rect x="466" y="28" width="174" height="36" rx="8"/>
-    <text class="th" x="553" y="50" text-anchor="middle">Prune</text>
-  </g>
-
-  <!-- Dividers -->
-  <line class="div" x1="226" y1="22" x2="226" y2="796"/>
-  <line class="div" x1="440" y1="22" x2="440" y2="796"/>
-
-  <!-- ══════════ INGEST ══════════ -->
-  <g class="gray">
-    <rect x="48" y="100" width="158" height="44" rx="8"/>
-    <text class="th" x="127" y="122" text-anchor="middle">Session ends</text>
-  </g>
-  <line class="arr" x1="127" y1="144" x2="127" y2="171" marker-end="url(#arrow)"/>
-
-  <g class="purple">
-    <rect x="48" y="172" width="158" height="56" rx="8"/>
-    <text class="th" x="127" y="193" text-anchor="middle">Summarizer LLM</text>
-    <text class="ts" x="127" y="213" text-anchor="middle">Compresses conversation</text>
-  </g>
-  <line class="arr" x1="127" y1="228" x2="127" y2="255" marker-end="url(#arrow)"/>
-
-  <g class="gray">
-    <rect x="48" y="256" width="158" height="44" rx="8"/>
-    <text class="th" x="127" y="278" text-anchor="middle">Page exists?</text>
-  </g>
-
-  <!-- No branch -->
-  <path class="arr" d="M48 278 L20 278 L20 370 L48 370" marker-end="url(#arrow)"/>
-  <text class="ts" x="6" y="324" text-anchor="middle" transform="rotate(-90,6,324)">No</text>
-
-  <!-- Yes branch -->
-  <path class="arr" d="M206 278 L234 278 L234 370 L206 370" marker-end="url(#arrow)"/>
-  <text class="ts" x="222" y="275" text-anchor="middle">Yes</text>
-
-  <g class="teal">
-    <rect x="48" y="370" width="74" height="56" rx="8"/>
-    <text class="th" x="85" y="391" text-anchor="middle">Create</text>
-    <text class="ts" x="85" y="409" text-anchor="middle">score = 0</text>
-  </g>
-  <g class="teal">
-    <rect x="132" y="370" width="74" height="56" rx="8"/>
-    <text class="th" x="169" y="391" text-anchor="middle">Update</text>
-    <text class="ts" x="169" y="409" text-anchor="middle">reset score</text>
-  </g>
-
-  <line class="arr" x1="85" y1="426" x2="85" y2="462" stroke-opacity="0.5"/>
-  <line class="arr" x1="169" y1="426" x2="169" y2="462" stroke-opacity="0.5"/>
-  <path fill="none" stroke="#888" stroke-width="1" d="M85 462 L127 488"/>
-  <path fill="none" stroke="#888" stroke-width="1" d="M169 462 L127 488"/>
-
-  <g class="purple">
-    <rect x="48" y="488" width="158" height="56" rx="8"/>
-    <text class="th" x="127" y="509" text-anchor="middle">MongoDB wiki</text>
-    <text class="ts" x="127" y="529" text-anchor="middle">Persistent store</text>
-  </g>
-
-  <!-- ══════════ READ ══════════ -->
-  <g class="gray">
-    <rect x="261" y="100" width="158" height="44" rx="8"/>
-    <text class="th" x="340" y="122" text-anchor="middle">User message</text>
-  </g>
-  <line class="arr" x1="340" y1="144" x2="340" y2="171" marker-end="url(#arrow)"/>
-
-  <g class="teal">
-    <rect x="261" y="172" width="158" height="56" rx="8"/>
-    <text class="th" x="340" y="193" text-anchor="middle">Router node</text>
-    <text class="ts" x="340" y="213" text-anchor="middle">Intent detection</text>
-  </g>
-  <line class="arr" x1="340" y1="228" x2="340" y2="255" marker-end="url(#arrow)"/>
-
-  <g class="teal">
-    <rect x="261" y="256" width="158" height="56" rx="8"/>
-    <text class="th" x="340" y="277" text-anchor="middle">Wiki map injected</text>
-    <text class="ts" x="340" y="297" text-anchor="middle">Into system prompt</text>
-  </g>
-  <line class="arr" x1="340" y1="312" x2="340" y2="339" marker-end="url(#arrow)"/>
-
-  <g class="purple">
-    <rect x="261" y="340" width="158" height="56" rx="8"/>
-    <text class="th" x="340" y="361" text-anchor="middle">LLM reads map</text>
-    <text class="ts" x="340" y="381" text-anchor="middle">Picks exact slug</text>
-  </g>
-  <line class="arr" x1="340" y1="396" x2="340" y2="423" marker-end="url(#arrow)"/>
-
-  <!-- wiki_read highlighted -->
-  <g class="amber-strong">
-    <rect x="261" y="424" width="158" height="56" rx="8"/>
-    <text class="th" x="340" y="445" text-anchor="middle">wiki_read(slug)</text>
-    <text class="ts" x="340" y="465" text-anchor="middle">Exact DB lookup</text>
-  </g>
-  <line class="arr" x1="340" y1="480" x2="340" y2="507" marker-end="url(#arrow)"/>
-
-  <g class="teal">
-    <rect x="261" y="508" width="158" height="56" rx="8"/>
-    <text class="th" x="340" y="529" text-anchor="middle">Fast DB query</text>
-    <text class="ts" x="340" y="549" text-anchor="middle">No embeddings needed</text>
-  </g>
-  <line class="arr" x1="340" y1="564" x2="340" y2="591" marker-end="url(#arrow)"/>
-
-  <g class="gray">
-    <rect x="261" y="592" width="158" height="56" rx="8"/>
-    <text class="th" x="340" y="613" text-anchor="middle">Page returned</text>
-    <text class="ts" x="340" y="633" text-anchor="middle">Score reset → 0</text>
-  </g>
-  <line class="arr" x1="340" y1="648" x2="340" y2="675" marker-end="url(#arrow)"/>
-
-  <g class="purple">
-    <rect x="261" y="676" width="158" height="44" rx="8"/>
-    <text class="th" x="340" y="698" text-anchor="middle">LLM responds</text>
-  </g>
-
-  <!-- ══════════ PRUNE ══════════ -->
-  <g class="gray">
-    <rect x="474" y="100" width="158" height="44" rx="8"/>
-    <text class="th" x="553" y="122" text-anchor="middle">Background job</text>
-  </g>
-  <text class="ts" x="553" y="158" text-anchor="middle">3 AM cron</text>
-  <line class="arr" x1="553" y1="168" x2="553" y2="195" marker-end="url(#arrow)"/>
-
-  <g class="amber">
-    <rect x="474" y="196" width="158" height="56" rx="8"/>
-    <text class="th" x="553" y="217" text-anchor="middle">Fetch all pages</text>
-    <text class="ts" x="553" y="237" text-anchor="middle">For this user</text>
-  </g>
-  <line class="arr" x1="553" y1="252" x2="553" y2="279" marker-end="url(#arrow)"/>
-
-  <g class="amber">
-    <rect x="474" y="280" width="158" height="56" rx="8"/>
-    <text class="th" x="553" y="301" text-anchor="middle">Compute score</text>
-    <text class="ts" x="553" y="321" text-anchor="middle">today − last_accessed</text>
-  </g>
-  <line class="arr" x1="553" y1="336" x2="553" y2="363" marker-end="url(#arrow)"/>
-
-  <g class="gray">
-    <rect x="474" y="364" width="158" height="44" rx="8"/>
-    <text class="th" x="553" y="386" text-anchor="middle">Score &gt; 30 days?</text>
-  </g>
-
-  <path class="arr" d="M474 386 L447 386 L447 480 L474 480" marker-end="url(#arrow)"/>
-  <text class="ts" x="442" y="433" text-anchor="end">Yes</text>
-
-  <path class="arr" d="M632 386 L659 386 L659 480 L632 480" marker-end="url(#arrow)"/>
-  <text class="ts" x="662" y="433" text-anchor="start">No</text>
-
-  <g class="coral">
-    <rect x="474" y="480" width="72" height="44" rx="8"/>
-    <text class="th" x="510" y="502" text-anchor="middle">Delete</text>
-  </g>
-  <g class="teal">
-    <rect x="560" y="480" width="72" height="44" rx="8"/>
-    <text class="th" x="596" y="502" text-anchor="middle">Keep</text>
-  </g>
-
-  <!-- Footer -->
-  <g class="footer">
-    <rect x="40" y="754" width="600" height="36" rx="8"/>
-    <text x="340" y="772" text-anchor="middle">Lowest score = most recently accessed = highest retrieval priority</text>
-  </g>
-</svg>
+**Ingest** — when a session ends, a Summarizer LLM compresses the conversation. If the topic already has a wiki page it's updated and score is reset; otherwise a new page is created with score 0. Everything is written to MongoDB.
 
 ```mermaid
 flowchart TD
-    subgraph INGEST ["📥 Ingest"]
-        A([Session ends]) --> B[Summarizer LLM\nCompresses conversation]
-        B --> C{Page exists?}
-        C -- No --> D[Create page\nscore = 0]
-        C -- Yes --> E[Update page\nreset score]
-        D --> F[(MongoDB wiki\nPersistent store)]
-        E --> F
-    end
-
-    subgraph READ ["🔎 Read"]
-        G([User message]) --> H[Router node\nIntent detection]
-        H --> I[Wiki map injected\nInto system prompt]
-        I --> J[LLM reads map\nPicks exact slug]
-        J --> K["wiki_read(slug)\nExact DB lookup"]
-        K --> L[Fast DB query\nNo embeddings]
-        L --> M[Page returned\nScore → 0]
-        M --> N([LLM responds])
-    end
-
-    subgraph PRUNE ["🗑️ Prune"]
-        O([Background job\n3 AM cron]) --> P[Fetch all pages\nFor this user]
-        P --> Q[Compute score\ntoday − last_accessed]
-        Q --> R{Score > 30 days?}
-        R -- Yes --> S[Delete page]
-        R -- No --> T[Keep active]
-    end
-
-    style INGEST fill:#EEEDFE,stroke:#534AB7,color:#26215C
-    style READ fill:#E1F5EE,stroke:#0F6E56,color:#04342C
-    style PRUNE fill:#FAEEDA,stroke:#854F0B,color:#412402
-    style K fill:#FAC775,stroke:#633806,color:#412402
+    A([Session ends])
+    A --> B[Summarizer LLM\nCompresses conversation]
+    B --> C{Page exists?}
+    C -- No --> D[Create page\nscore = 0]
+    C -- Yes --> E[Update page\nreset score]
+    D --> F[(MongoDB wiki)]
+    E --> F
+    style B fill:#EEEDFE,stroke:#534AB7,color:#26215C
+    style D fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+    style E fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+    style F fill:#EEEDFE,stroke:#534AB7,color:#26215C
 ```
 
-#### Relevancy Decay
+**Read** — on each user message the router injects the full wiki map into the system prompt. The LLM picks the exact slug it needs and calls `wiki_read`. One fast MongoDB lookup, no embeddings, score resets to 0.
 
-Every wiki page has a score: `score = today − date of last access (days)`
+```mermaid
+flowchart TD
+    G([User message])
+    G --> H[Router node\nIntent detection]
+    H --> I[Wiki map injected\nInto system prompt]
+    I --> J[LLM reads map\nPicks exact slug]
+    J --> K["wiki_read(slug)\nExact DB lookup"]
+    K --> L[Fast DB query\nNo embeddings]
+    L --> M[Page returned\nScore reset to 0]
+    M --> N([LLM responds])
+    style H fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+    style I fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+    style J fill:#EEEDFE,stroke:#534AB7,color:#26215C
+    style K fill:#FAC775,stroke:#633806,color:#412402
+    style L fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+    style M fill:#F1EFE8,stroke:#888780,color:#2C2C2A
+```
 
-| Score | Status | Action |
-|---|---|---|
-| 0 | Just accessed | Highest priority in wiki map |
-| 1–14 | Active | Included normally |
-| 15–29 | Aging | Flagged for compression (planned) |
-| 30+ | Stale | Pruned at 3 AM cleanup |
+**Prune** — a background job at 3 AM computes each page's score (`today − last_accessed`). Pages stale for 30+ days are deleted; everything else stays.
+
+```mermaid
+flowchart TD
+    O([Background job — 3 AM cron])
+    O --> P[Fetch all pages\nFor this user]
+    P --> Q[Compute score\ntoday minus last_accessed]
+    Q --> R{Score > 30 days?}
+    R -- Yes --> S[Delete page]
+    R -- No --> T[Keep active]
+    style P fill:#FAEEDA,stroke:#854F0B,color:#412402
+    style Q fill:#FAEEDA,stroke:#854F0B,color:#412402
+    style S fill:#FAECE7,stroke:#993C1D,color:#4A1B0C
+    style T fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+```
 
 When the LLM reads a page, score resets to `0`. When topics are ambiguous, the LLM picks the page with the **lowest score** — most recently relevant wins.
 
@@ -660,5 +448,3 @@ AI was used as a tool in this process — to validate thinking, challenge approa
 ---
 
 <div align="center">
-
-</div>
