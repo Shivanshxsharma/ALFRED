@@ -236,33 +236,41 @@ Alfred remembers who you are across every session. Not just the current conversa
 
 #### How Memory Flows
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     ALFRED WIKI MEMORY                          │
-├──────────────────┬──────────────────┬───────────────────────────┤
-│     INGEST       │      READ        │         PRUNE             │
-│                  │                  │                           │
-│  Session ends    │  User message    │   Background job (3 AM)   │
-│       │          │       │          │          │                 │
-│  Summarizer LLM  │  Router node     │  Fetch all user pages     │
-│  compresses conv │  injects wiki    │          │                 │
-│       │          │  map into prompt │  score = today −          │
-│  Page exists?    │       │          │  last_accessed (days)     │
-│  ┌────┴────┐     │  LLM reads map   │          │                 │
-│ No       Yes     │  picks exact     │    score > 30?            │
-│  │         │     │  slug to fetch   │   ┌──────┴──────┐         │
-│ Create   Update  │       │          │  Yes            No        │
-│  page    page    │  wiki_read(slug) │   │              │         │
-│  score=0 reset   │  exact DB lookup │  Delete        Keep       │
-│  └────┬────┘     │       │          │  page          active     │
-│       │          │  Fast DB query   │                           │
-│  MongoDB wiki    │  no embeddings   │                           │
-│  store           │       │          │                           │
-│                  │  Page returned   │                           │
-│                  │  score → 0       │                           │
-│                  │       │          │                           │
-│                  │  LLM responds    │                           │
-└──────────────────┴──────────────────┴───────────────────────────┘
+![Alfred Memory Flow](./docs/alfred_memory_flow.svg)
+
+```mermaid
+flowchart TD
+    subgraph INGEST ["📥 Ingest"]
+        A([Session ends]) --> B[Summarizer LLM\nCompresses conversation]
+        B --> C{Page exists?}
+        C -- No --> D[Create page\nscore = 0]
+        C -- Yes --> E[Update page\nreset score]
+        D --> F[(MongoDB wiki\nPersistent store)]
+        E --> F
+    end
+
+    subgraph READ ["🔎 Read"]
+        G([User message]) --> H[Router node\nIntent detection]
+        H --> I[Wiki map injected\nInto system prompt]
+        I --> J[LLM reads map\nPicks exact slug]
+        J --> K["wiki_read(slug)\nExact DB lookup"]
+        K --> L[Fast DB query\nNo embeddings]
+        L --> M[Page returned\nScore → 0]
+        M --> N([LLM responds])
+    end
+
+    subgraph PRUNE ["🗑️ Prune"]
+        O([Background job\n3 AM cron]) --> P[Fetch all pages\nFor this user]
+        P --> Q[Compute score\ntoday − last_accessed]
+        Q --> R{Score > 30 days?}
+        R -- Yes --> S[Delete page]
+        R -- No --> T[Keep active]
+    end
+
+    style INGEST fill:#EEEDFE,stroke:#534AB7,color:#26215C
+    style READ fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+    style PRUNE fill:#FAEEDA,stroke:#854F0B,color:#412402
+    style K fill:#FAC775,stroke:#633806,color:#412402
 ```
 
 #### Relevancy Decay
@@ -433,8 +441,5 @@ AI was used as a tool in this process — to validate thinking, challenge approa
 ---
 
 <div align="center">
-Built by [Shivansh Sharma](https://github.com/Shivanshxsharma) · NSUT Delhi
-
-⭐ Star this repo if you find it useful
 
 </div>
