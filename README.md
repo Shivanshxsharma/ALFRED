@@ -1,14 +1,14 @@
-<img width="300" height="150" alt="s" src="https://github.com/user-attachments/assets/372211ab-61d6-4822-87ac-406f334cef8f" />
+
 <div align="center">
 <?xml version="1.0" encoding="UTF-8"?>
 
 
 <div style="display: flex; flex-direction: column; justify-items:center; align-items: center; gap: 1rem;">
-
+<img width="350" height="150" alt="s"  src="https://github.com/user-attachments/assets/372211ab-61d6-4822-87ac-406f334cef8f" />
 </div>
 
 
-**A full-stack AI assistant built as a product — not a prototype.**
+**A full-stack AI agent to automate life .**
 
 [![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)](https://nextjs.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com)
