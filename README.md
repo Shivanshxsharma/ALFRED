@@ -4,7 +4,7 @@
 
 
 <div style="display: flex; flex-direction: column; justify-items:center; align-items: center; gap: 1rem;">
-<img width="450" height="150" alt="s"  src="https://github.com/user-attachments/assets/372211ab-61d6-4822-87ac-406f334cef8f" />
+<img width="550" height="150" alt="s"  src="https://github.com/user-attachments/assets/372211ab-61d6-4822-87ac-406f334cef8f" />
 </div>
 
 
