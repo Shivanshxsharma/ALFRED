@@ -1,11 +1,14 @@
-<div align="center">
 
-<div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;">
-  <img width="240" height="60" alt="Alfred Logo" src="https://github.com/user-attachments/assets/6c1af047-8f64-4d8e-8814-d95827b72709" />
+<div align="center">
+<?xml version="1.0" encoding="UTF-8"?>
+
+
+<div style="display: flex; flex-direction: column; justify-items:center; align-items: center; gap: 1rem;">
+<img width="550" height="150" alt="s"  src="https://github.com/user-attachments/assets/372211ab-61d6-4822-87ac-406f334cef8f" />
 </div>
 
 
-**A full-stack AI assistant built as a product — not a prototype.**
+**A full-stack AI agent to automate life .**
 
 [![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)](https://nextjs.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com)
@@ -230,74 +233,92 @@ Alfred remembers who you are across every session. Not just the current conversa
 
 **Vector RAG** — embeddings + cosine similarity on every turn. Accurate, but adds an API call and vector search to every message. Overkill for small memory sets. Karpathy himself noted this is unnecessary at lower scale. Also risks surfacing semantically similar but contextually irrelevant old memories.
 
-**LLM Wiki** — chosen because it only loads what's needed, retrieval is a fast DB query with no embeddings, and the LLM describes intent in natural language while Python does the matching.
+**LLM Wiki** — chosen because it only loads what's needed, retrieval is a fast DB query with no embeddings, and the LLM selects the exact page to read from a structured wiki map injected into its context.
 
 > Vector search is planned as a future upgrade when a user's memory grows beyond 20+ pages. The current architecture is designed to swap the retrieval backend without changing the LLM interface.
 
 #### How Memory Flows
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     ALFRED WIKI MEMORY                          │
-├──────────────────┬──────────────────┬───────────────────────────┤
-│     INGEST       │      READ        │         PRUNE             │
-│                  │                  │                           │
-│  Session ends    │  User message    │   Background job (3 AM)   │
-│       │          │       │          │          │                 │
-│  Summarizer LLM  │  Router node     │  Fetch all user pages     │
-│  compresses conv │  fetches wiki    │          │                 │
-│       │          │  index + scores  │  score = today −          │
-│  Page exists?    │       │          │  last_accessed (days)     │
-│  ┌────┴────┐     │  Wiki map        │          │                 │
-│ No       Yes     │  injected into   │    score > 30?            │
-│  │         │     │  system prompt   │   ┌──────┴──────┐         │
-│ Create   Update  │       │          │  Yes            No        │
-│  page    page    │  LLM picks topic │   │              │         │
-│  score=0 reset   │  lowest score    │  Delete        Keep       │
-│  └────┬────┘     │  = most recent   │  page          active     │
-│       │          │       │          │                           │
-│  MongoDB wiki    │  wiki_search()   │                           │
-│  store           │  plain English   │                           │
-│                  │  → keyword match │                           │
-│                  │       │          │                           │
-│                  │  Fast DB query   │                           │
-│                  │  no embeddings   │                           │
-│                  │       │          │                           │
-│                  │  Page returned   │                           │
-│                  │  score → 0       │                           │
-│                  │       │          │                           │
-│                  │  LLM responds    │                           │
-└──────────────────┴──────────────────┴───────────────────────────┘
+<img src="https://github.com/user-attachments/assets/19b09bc7-7c92-498a-990d-05f1721ff4cd" width="680" alt="Alfred memory flow — Ingest, Read, Prune flowchart with relevancy decay table"/>
+
+**Ingest** — when a session ends, a Summarizer LLM compresses the conversation. If the topic already has a wiki page it's updated and score is reset; otherwise a new page is created with score 0. Everything is written to MongoDB.
+
+```mermaid
+flowchart TD
+    A([Session ends])
+    A --> B[Summarizer LLM\nCompresses conversation]
+    B --> C{Page exists?}
+    C -- No --> D[Create page\nscore = 0]
+    C -- Yes --> E[Update page\nreset score]
+    D --> F[(MongoDB wiki)]
+    E --> F
+    style B fill:#EEEDFE,stroke:#534AB7,color:#26215C
+    style D fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+    style E fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+    style F fill:#EEEDFE,stroke:#534AB7,color:#26215C
 ```
 
-#### Relevancy Decay
+**Read** — on each user message the router injects the full wiki map into the system prompt. The LLM picks the exact slug it needs and calls `wiki_read`. One fast MongoDB lookup, no embeddings, score resets to 0.
 
-Every wiki page has a score: `score = today − date of last access (days)`
+```mermaid
+flowchart TD
+    G([User message])
+    G --> H[Router node\nIntent detection]
+    H --> I[Wiki map injected\nInto system prompt]
+    I --> J[LLM reads map\nPicks exact slug]
+    J --> K["wiki_read(slug)\nExact DB lookup"]
+    K --> L[Fast DB query\nNo embeddings]
+    L --> M[Page returned\nScore reset to 0]
+    M --> N([LLM responds])
+    style H fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+    style I fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+    style J fill:#EEEDFE,stroke:#534AB7,color:#26215C
+    style K fill:#FAC775,stroke:#633806,color:#412402
+    style L fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+    style M fill:#F1EFE8,stroke:#888780,color:#2C2C2A
+```
 
-| Score | Status | Action |
-|---|---|---|
-| 0 | Just accessed | Highest priority in wiki map |
-| 1–14 | Active | Included normally |
-| 15–29 | Aging | Flagged for compression (planned) |
-| 30+ | Stale | Pruned at 3 AM cleanup |
+**Prune** — a background job at 3 AM computes each page's score (`today − last_accessed`). Pages stale for 30+ days are deleted; everything else stays.
+
+```mermaid
+flowchart TD
+    O([Background job — 3 AM cron])
+    O --> P[Fetch all pages\nFor this user]
+    P --> Q[Compute score\ntoday minus last_accessed]
+    Q --> R{Score > 30 days?}
+    R -- Yes --> S[Delete page]
+    R -- No --> T[Keep active]
+    style P fill:#FAEEDA,stroke:#854F0B,color:#412402
+    style Q fill:#FAEEDA,stroke:#854F0B,color:#412402
+    style S fill:#FAECE7,stroke:#993C1D,color:#4A1B0C
+    style T fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+```
 
 When the LLM reads a page, score resets to `0`. When topics are ambiguous, the LLM picks the page with the **lowest score** — most recently relevant wins.
 
-#### The wiki_search Tool
+#### The wiki_read Tool
 
-The LLM never has to remember or copy exact slugs. It describes what it needs in plain English and Python does the matching:
+The LLM selects what to read using a **wiki map** injected into its context at the start of every session. The map lists every page with its slug, category, and a one-line summary:
+
+```
+Category: PROJECT
+  - metro-mate: Metro Mate is a project that uses dialect training for LLMs to address language variations in a metropolitan context.
+Category: USER
+  - shivansh: Contains user details — key facts about Shivansh, including his identity, education, and career aspirations.
+```
+
+The LLM reads this map, picks the exact slug it needs, and calls `wiki_read` directly:
 
 ```python
 # LLM calls:
-wiki_search("metro mate project details")
-wiki_search("user's name and background")
+wiki_read("metro-mate")
+wiki_read("shivansh")
 
-# Python scores each page by keyword overlap across:
-# title + slug + category + content[:400]
-# Returns top 1-2 matching pages
+# Python fetches the page by exact slug from MongoDB
+# Resets page score → 0 on access
 ```
 
-**Why not slug-based lookup?** The previous approach gave the LLM an exact slug list and asked it to copy the right one. Gemini generated `"metro-mate-project"` instead of `"metro-mate"`. LLMs generate — they don't copy. `wiki_search` fixes this permanently.
+**Why wiki map + exact slug?** The wiki map gives the LLM full visibility into what memory exists before it decides what to retrieve. Since slugs are shown explicitly in the map, the LLM selects from a known list rather than generating a guess — eliminating slug hallucination entirely. No embeddings, no fuzzy matching, just a fast DB lookup by slug.
 
 #### Memory Stack
 
@@ -310,7 +331,7 @@ wiki_search("user's name and background")
 #### Roadmap for Memory
 
 - [x] Wiki store with slug + category + content
-- [x] `wiki_search` natural language retrieval
+- [x] `wiki_read` with wiki map slug selection
 - [x] Relevancy score decay system
 - [x] Summarizer layer on session end
 - [ ] 3 AM pruning cron job (APScheduler)
@@ -430,9 +451,3 @@ AI was used as a tool in this process — to validate thinking, challenge approa
 ---
 
 <div align="center">
-
-Built by [Shivansh Sharma](https://github.com/Shivanshxsharma) · NSUT Delhi
-
-⭐ Star this repo if you find it useful
-
-</div>
