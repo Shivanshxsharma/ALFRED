@@ -1,83 +1,102 @@
-
+from datetime import datetime ,timedelta,timezone
 import os
+
 
 from fastapi import Depends, HTTPException,status
 from uuid_utils import uuid4
+
+from backend.repos.user_repo import get_user_by_userid
 from ..core.config import connect_db,get_db
-from ..models.models import chats,create_User,add_to_Chat,delete_chat,Messages,prompt_req
+from ..models.models import chats,create_User,add_to_Chat,delete_chat,Messages,prompt_req,collections
 import httpx
 
-async def add_to_Db(new_chat:bool,user_id:str,chatId:str,prompt:dict,db):
- try:
-    role=prompt["role"]
-    content=prompt["content"]
-    meta_data=prompt["meta_data"] if "meta_data" in prompt else None
-    if new_chat is True:
-        from ..services.model  import gen_chat_title
-        title=await gen_chat_title(prompt)
-        await db["users"].update_one(
-        {"userid": user_id},
-        {"$push": {"chat_history": {"chatId":chatId,"title":title}}} 
-         )
-     
-        new_chat_message={
-         "role":role,
-         "content":content,
-         "meta_data":meta_data,
-         
-         }
-        new_chat_dict={
-           "chatId":chatId,
-           "title":title,
-            "messages":[new_chat_message],
-            "wiki_summarized_count":0
+
+async def add_to_Db(new_chat: bool, user_id: str, chatId: str, prompt: dict, db):
+    try:
+        role = prompt["role"]
+        content = prompt["content"]
+        meta_data = prompt.get("meta_data", None)
+
+        # single message document — always inserted
+        message_doc = {
+            "chatId": chatId,
+            "userId": user_id,
+            "role": role,
+            "content": content,
+            "meta_data": meta_data,
+            "created_at": datetime.now(timezone.utc)
         }
 
-        await db["chats"].insert_one(new_chat_dict)
-      
-    else:
-     message={
-       "role":role,
-       "content":content,
-       "meta_data":meta_data
-     }
+        if new_chat:
+            from ..services.model import gen_chat_title
+            title = await gen_chat_title(prompt)
 
-     await db["chats"].update_one(
-        {'chatId':chatId},
-        {"$push":{"messages":message}}
-     )
+            new_chat_dict = {
+                "chatId": chatId,
+                "userId": user_id,       # ← was missing
+                "title": title,
+                "message_count": 1,      # ← starts at 1, first message
+                "wiki_summarized_count": 0,
+                "created_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc),
+            }
 
- except HTTPException:
+            await db[collections.CHATS].insert_one(new_chat_dict)
+
+        else:
+            await db[collections.CHATS].update_one(
+                {"chatId": chatId},
+                {
+                    "$inc": {"message_count": 1},
+                    "$set": {"updated_at": datetime.now(timezone.utc)}  # ← was missing
+                }
+            )
+
+        # insert message as individual document either way
+        await db[collections.MESSAGES].insert_one(message_doc)
+
+    except HTTPException:
         raise
- except Exception as e:
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error during adding data: {e}"
         )
 
 
-async def getUserInfo(userid:str,email:str,db):
 
+
+
+
+async def getUserInfo(userid: str, db, pg_db):
     try:
-        if(not email or not userid):
-           raise HTTPException(
-               status_code=status.HTTP_400_BAD_REQUEST,
-               detail="userid and email are required"
-           )
-        
-        user=await db["users"].find_one({"userid":userid,"email":email})
+        if not userid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="userid is required"
+            )
+
+        user = await get_user_by_userid(pg_db, userid)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found"
             )
-        
-        if "_id" in user:
-            user["_id"] = str(user["_id"])
-        if "chat_history" in user:
-            user["chat_history"] = user["chat_history"][-15:][::-1]
-        exclude_fields = {"refresh_token", "password_hash", "_id"}
-        return {k:v for k,v in user.items() if k not in exclude_fields}
+
+        chats = await db[collections.CHATS].find(
+            {"userId": userid},
+            {"_id": 0, "chatId": 1, "title": 1, "updated_at": 1}
+        ).sort("updated_at", -1).limit(15).to_list(15)
+
+        # ✅ build a plain dict instead of mutating the ORM object
+        return {
+            "userid": user.userid,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "email": user.email,
+            "provider": user.provider,
+            "chat_history": chats,
+        }
 
     except HTTPException:
         raise
@@ -88,19 +107,15 @@ async def getUserInfo(userid:str,email:str,db):
         )
 
 
-
-
-
-
-
-
 async def getChatHistory(userid,page,page_size,db):
     try:
-        user=await db["users"].find_one({"userid":userid})
-        hist = user["chat_history"][::-1][page:page+page_size]
+        hist=await db[collections.CHATS].find(
+            {"userId": userid},
+            {"_id": 0,   "chatId": 1, "title": 1, "updated_at": 1}
+        ).sort("updated_at", -1).skip(page * page_size).limit(page_size).to_list(None)
         return {
             "items": hist,
-            "hasMore": len(user["chat_history"]) > page + page_size
+            "hasMore": len(hist) == page_size
         }
     except HTTPException:
         raise
@@ -113,16 +128,19 @@ async def getChatHistory(userid,page,page_size,db):
 
 
 
-async def getChatMessages(chatId:str,db):
+async def getChatMessages(userid: str, chatId: str, db):
         try:
-            chat=await db["chats"].find_one({"chatId":chatId})
-            if not chat:
+            messages = await db[collections.MESSAGES].find(
+            {"chatId": chatId, "userId": userid},
+            {"_id": 0}
+            ).to_list(None)
+            if not messages:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Chat not found"
                 )
 
-            return chat["messages"]
+            return messages
         except HTTPException:   
             raise
         except Exception as e:

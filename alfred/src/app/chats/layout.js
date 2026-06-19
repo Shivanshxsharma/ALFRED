@@ -11,6 +11,8 @@ import {
 
 import { AppSidebar } from '@/components/ui/app-sidebar'
 import "../globals.css"
+import { ErrorBanner } from '@/components/ui/ErrorBanner'
+import { usechatStore } from '@/services/contextStrore'
 
 export default function RootLayout({ children }) {
   return (

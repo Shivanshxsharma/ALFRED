@@ -1,26 +1,3 @@
-"""
-config.py
-=========
-Database configuration — Motor (async) replacing PyMongo (sync).
-
-Why Motor over PyMongo:
-    FastAPI runs on an async event loop (uvicorn). PyMongo blocks the
-    event loop on every DB call — no other request can run while waiting
-    for MongoDB. Motor is fully async — the event loop stays free during
-    DB calls, enabling true concurrency.
-
-Migration note for existing routes:
-    Motor has the exact same API as PyMongo — just add await:
-
-    PyMongo:  doc = db["chats"].find_one({"chatId": id})
-    Motor:    doc = await db["chats"].find_one({"chatId": id})
-
-    PyMongo:  docs = list(db["chats"].find({}))
-    Motor:    docs = await db["chats"].find({}).to_list(length=100)
-
-    PyMongo:  db["chats"].insert_one(doc)
-    Motor:    await db["chats"].insert_one(doc)
-"""
 
 from __future__ import annotations
 
@@ -32,11 +9,10 @@ import pymongo
 MONGO_URI     = os.getenv("MONGO_URI",     "mongodb://localhost:27017/")
 DATABASE_NAME = os.getenv("DATABASE_NAME", "Alfred")
 
-# ── Module-level references — set once at startup ──────────────────────────────
 client: AsyncIOMotorClient   | None = None
 db:     AsyncIOMotorDatabase | None = None
 
-sync_client: pymongo.MongoClient | None = None  # For LangGraph checkpointer only
+sync_client: pymongo.MongoClient | None = None  
 
 
 
@@ -53,7 +29,13 @@ async def connect_db() -> None:
     client = AsyncIOMotorClient(MONGO_URI)
     db     = client[DATABASE_NAME]
 
-    # Verify connection — Motor ping is async
+    await db.chats.create_index("userId")
+    await db.messages.create_index("chatId")
+    await db.users.create_index("email", unique=True)
+    await db.wiki_pages.create_index("slug")
+    await db.wiki_categories.create_index("userId")
+    await db.file_chunks.create_index("file_hash")
+    await db.files.create_index("file_hash", unique=True)
     await client.admin.command("ping")
     print(f"[DB] Connected to MongoDB: {DATABASE_NAME}")
 

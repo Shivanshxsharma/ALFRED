@@ -3,7 +3,7 @@ Alfred Wiki — Write Tools
 """
 
 from __future__ import annotations
-
+import asyncio
 from backend.services.wiki_db import (
     WIKI_NAMESPACE,
     _col,
@@ -17,6 +17,11 @@ from backend.services.wiki_db import (
     slugify,
 )
 
+__all__ = ["get_all_slugs", "get_categories", "create_category", "wiki_upsert", "wiki_delete"]
+
+MAX_CONTENT_BLOCKS = 20  # cap how many session blocks a page can hold
+
+
 async def get_all_slugs(user_id: str) -> list[dict]:
     col = _col()
     cursor = col.find(
@@ -25,7 +30,6 @@ async def get_all_slugs(user_id: str) -> list[dict]:
     ).sort("category", 1)
     return await cursor.to_list(length=500)
 
-__all__ = ["get_all_slugs", "get_categories", "create_category", "wiki_upsert", "wiki_delete"]
 
 async def wiki_upsert(
     user_id: str,
@@ -38,8 +42,7 @@ async def wiki_upsert(
 ) -> dict:
     col = _col()
     final_slug = slug or slugify(title)
-    
-    # ADDED: Filter by user_id
+
     existing = await col.find_one({"user_id": user_id, "slug": final_slug})
     is_perm = category.lower() == "user"
 
@@ -52,27 +55,34 @@ async def wiki_upsert(
             "title":           title,
             "category":        category,
             "content":         initial_content,
+            "blocks":          [initial_content],  # ✅ track blocks separately
             "summary":         summary,
-            "relevancy_score": 1.0,     
-            "is_permanent":    is_perm, 
+            "relevancy_score": 1.0,
+            "is_permanent":    is_perm,
             "created_at":      now(),
             "updated_at":      now(),
         }
 
         await col.insert_one(doc)
-
-        await _pinecone_upsert(
-            user_id  = user_id,
-            slug     = final_slug,
-            title    = title,
-            category = category,
-            summary  = summary,
-            content  = initial_content,
+        await _pinecone_upsert_async(
+            user_id=user_id,
+            slug=final_slug,
+            title=title,
+            category=category,
+            summary=summary,
+            content=initial_content,
         )
         return {"ok": True, "slug": final_slug, "action": "created"}
 
+    # ✅ append new block, trim oldest if over limit
     new_block = f"\n\n## {title}\n**Session:** {session_date}\n\n{concept_content}"
-    updated_content = existing.get("content", "").rstrip("\n") + new_block
+    existing_blocks = existing.get("blocks", [existing.get("content", "")])
+    existing_blocks.append(new_block)
+
+    if len(existing_blocks) > MAX_CONTENT_BLOCKS:
+        existing_blocks = existing_blocks[-MAX_CONTENT_BLOCKS:]  # keep latest
+
+    updated_content = "\n".join(existing_blocks)
     existing_is_perm = existing.get("category", category).lower() == "user"
 
     await col.update_one(
@@ -80,21 +90,22 @@ async def wiki_upsert(
         {
             "$set": {
                 "content":         updated_content,
+                "blocks":          existing_blocks,  # ✅ persist blocks list
                 "summary":         summary,
-                "relevancy_score": 1.0,              
-                "is_permanent":    existing_is_perm, 
+                "relevancy_score": 1.0,
+                "is_permanent":    existing_is_perm,
                 "updated_at":      now(),
             }
         }
     )
 
-    await _pinecone_upsert(
-        user_id  = user_id,
-        slug     = final_slug,
-        title    = existing.get("title", title),
-        category = existing.get("category", category),
-        summary  = summary,
-        content  = updated_content,
+    await _pinecone_upsert_async(
+        user_id=user_id,
+        slug=final_slug,
+        title=existing.get("title", title),
+        category=existing.get("category", category),
+        summary=summary,
+        content=updated_content,
     )
     return {"ok": True, "slug": final_slug, "action": "appended"}
 
@@ -112,22 +123,29 @@ async def wiki_delete(user_id: str, slug: str, confirm: bool = False) -> dict:
     if not confirm:
         return {
             "ok": True, "dry_run": True, "slug": slug,
-            "title": doc.get("title", slug), "category": doc.get("category", "—"),
+            "title": doc.get("title", slug),
+            "category": doc.get("category", "—"),
             "message": "Pass confirm=True to actually delete."
         }
 
     await col.delete_one({"user_id": user_id, "slug": slug})
 
     try:
-        # ADDED: Safely delete unique pinecone ID
-        _pinecone().delete(ids=[f"{user_id}_{slug}"], namespace=WIKI_NAMESPACE)
+        # ✅ run blocking Pinecone call in thread
+        await asyncio.to_thread(
+            _pinecone().delete,
+            ids=[f"{user_id}_{slug}"],
+            namespace=WIKI_NAMESPACE
+        )
     except Exception as e:
-        return {"ok": False, "error": f"Deleted from MongoDB but Pinecone delete failed: {e}"}
+        print(f"[wiki_delete] Pinecone delete failed for {slug}: {e}")
+        # ✅ don't return error — MongoDB delete succeeded, Pinecone is best-effort
+        return {"ok": True, "deleted": slug, "warning": f"Pinecone delete failed: {e}"}
 
     return {"ok": True, "deleted": slug}
 
 
-async def _pinecone_upsert(
+async def _pinecone_upsert_async(
     user_id: str,
     slug: str,
     title: str,
@@ -138,13 +156,15 @@ async def _pinecone_upsert(
     embed_text = build_embed_text(title, category, summary, content)
     vector = await _embed(embed_text)
 
-    _pinecone().upsert(
+    # ✅ run blocking Pinecone upsert in thread
+    await asyncio.to_thread(
+        _pinecone().upsert,
         vectors=[
             {
-                "id":       f"{user_id}_{slug}",  # Unique ID across users
+                "id":       f"{user_id}_{slug}",
                 "values":   vector,
                 "metadata": {
-                    "user_id":  user_id,          # Added for safe filtering
+                    "user_id":  user_id,
                     "slug":     slug,
                     "title":    title,
                     "category": category,

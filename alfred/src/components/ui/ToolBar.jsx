@@ -79,14 +79,7 @@ export default function ToolBar({ tools }) {
                 {/* Tool info */}
                 <div className="flex flex-col gap-y-1 min-w-0">
                   <span className="text-xs font-mono text-zinc-200">{tool.name}</span>
-                  {tool.input && (
-                    <span className="text-xs text-zinc-500 truncate">
-                      {typeof tool.input === "object"
-                        ? Object.entries(tool.input).map(([k, v]) => `${k}: ${v}`).join(" · ")
-                        : tool.input
-                      }
-                    </span>
-                  )}
+
                 </div>
 
                 {/* Status */}

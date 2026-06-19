@@ -31,6 +31,17 @@ from langchain_core.runnables import RunnableConfig
 from .wiki_read_tools import wiki_read, build_wiki_context_block
 
 
+TOOL_DISPLAY_NAMES = {
+    "search_tool": "Searching the web",
+    "wiki_read": "Remembering from wiki memory",
+    "read_file": "Reading uploaded files",
+}
+
+
+def get_tool_display_name(tool_name: str) -> str:
+    return TOOL_DISPLAY_NAMES.get(tool_name, tool_name.replace("_", " ").title())
+
+
 # ---------------------------------------------------------------------------
 # Prompts
 # ---------------------------------------------------------------------------
@@ -111,7 +122,7 @@ Supported types: line, bar, area, pie, scatter.
 
 
 
-def build_file_context(injected_file_text: str, rag_files: list) -> str:
+def build_file_context(rag_files: list) -> str:
     """Build the file context block injected after the system prompt."""
     if not rag_files:
         return ""
@@ -119,31 +130,20 @@ def build_file_context(injected_file_text: str, rag_files: list) -> str:
     file_hashes = [f["file_hash"] for f in rag_files]
     file_names  = [f["name"] for f in rag_files]
 
-    if injected_file_text:
-        return f"""
----
-UPLOADED FILE CONTEXT:
-The following chunks were pre-retrieved for the current query:
+    return f"""
+    if the user's question is about any of these files: {', '.join(file_names)}
+    OR
+    if you dont have relevant information in memory to answer a question about the user query
+    THEN
+    use the read_file tool to retrieve relevant information from the files before answering.
+    WITH
+    query = the user's question or the specific information gap you have in memory
+    file_hashes = {file_hashes}
+    """
 
-{injected_file_text}
+    
 
-If these chunks are insufficient to fully answer the question, call read_file with:
-  - query: a focused search string
-  - file_hashes: {file_hashes}
-"""
-    else:
-        return f"""
----
-UPLOADED FILES: {file_names}
-File hashes: {file_hashes}
-
-No context has been pre-retrieved for this query.
-You MUST call read_file before answering any question about these files.
-  - query: what the user is asking about
-  - file_hashes: {file_hashes}
-Do NOT answer from memory or prior conversation turns.
-"""
-
+    
 
 # ---------------------------------------------------------------------------
 # State
@@ -233,11 +233,6 @@ async def router_node(state: chatState,config: RunnableConfig) -> dict:
 
     small_texts = []
 
-
-
-
-
-
     for f in files_uploaded:
         if not f.get("needs_rag"):
             try:
@@ -247,12 +242,8 @@ async def router_node(state: chatState,config: RunnableConfig) -> dict:
             except Exception as e:
                 print(f"[router_node] Failed to fetch text for '{f['name']}': {e}")
 
-    updates: dict = {"persisted_files": files_uploaded}
-
-     
+    updates["persisted_files"] = files_uploaded
     
-
-
     if small_texts:
         updates["injected_file_text"] = "\n\n".join(
             f"File: {name}\nContent:\n{text}"
@@ -261,6 +252,14 @@ async def router_node(state: chatState,config: RunnableConfig) -> dict:
         )
 
     return updates
+
+
+
+
+
+
+
+
 
 
 def should_retrieve(state: chatState) -> str:
@@ -315,6 +314,14 @@ async def retrieval_node(state: chatState) -> dict:
         return {"injected_file_text": "", "pre_rag_files": rag_files}
 
 
+
+
+
+
+
+
+
+
 async def chat_node(state: chatState) -> dict:
     print("in chat_node")
 
@@ -348,8 +355,11 @@ async def chat_node(state: chatState) -> dict:
 
 
 
-        file_context  = build_file_context(injected_file_text, rag_files)
+        file_context  = build_file_context(rag_files)
         image_context = ""
+
+        last_human = non_system[-1]
+        content = [{"type": "text", "text": injected_file_text + last_human.content}]
 
         if images_uploaded:
             image_names = "\n".join(f"- {img['name']}" for img in images_uploaded)
@@ -359,14 +369,12 @@ async def chat_node(state: chatState) -> dict:
                              Analyze them as part of your response — no tool call needed for images.
                             """
             # Embed base64 images into the last HumanMessage
-            last_human = non_system[-1]
-            content = [{"type": "text", "text": last_human.content}]
             for img in images_uploaded:
                 content.append({
                     "type": "image_url",
                     "image_url": {"url": f"data:{img['mime_type']};base64,{img['base64']}"},
                 })
-            non_system = non_system[:-1] + [HumanMessage(content=content)]
+        non_system = non_system[:-1] + [HumanMessage(content=(content))]
 
         final_messages = [
             SystemMessage(content=get_system_prompt() + file_context + image_context + "\n\n" + state.get("wiki_map", "")),
@@ -472,18 +480,17 @@ async def stream_response(
 
             if event["event"] == "on_tool_start":
                 tool_name  = event["name"]
-                tool_input = event["data"].get("input")
+                tool_display_name = get_tool_display_name(tool_name)
                 tool_data.tool_calls.append({
-                    "tool_name":  tool_name,
-                    "tool_input": tool_input,
-                    "start_time": datetime.now().isoformat(),
+                    "tool_name":  tool_display_name,
                 })
-                yield f"data: {json.dumps({'type': 'tool_start', 'tool_name': tool_name, 'tool_input': tool_input})}\n\n"
+                yield f"data: {json.dumps({'type': 'tool_start', 'tool_name': tool_display_name})}\n\n"
 
             elif event["event"] == "on_tool_end":
                 tool_name   = event["name"]
                 tool_output = event["data"].get("output")
-                yield f"data: {json.dumps({'type': 'tool_end', 'tool_name': tool_name, 'tool_output': str(tool_output)[:200]})}\n\n"
+                tool_display_name = get_tool_display_name(tool_name)
+                yield f"data: {json.dumps({'type': 'tool_end', 'tool_name': tool_display_name, 'tool_output': str(tool_output)[:200]})}\n\n"
 
             elif event["event"] == "on_chat_model_stream":
                 content = event["data"]["chunk"].content

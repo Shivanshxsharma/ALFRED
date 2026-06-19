@@ -11,12 +11,16 @@ import {
 
 
 import { AppSidebar } from '@/components/ui/app-sidebar'
+import { usechatStore } from '@/services/contextStrore'
+import { useShallow } from 'zustand/shallow'
 
 
 
 const Chatpage = ({chatId}) => {
   return (    
+    
     <div className='overflow-hidden static'>
+          
           <SidebarProvider defaultOpen={false}>
       <AppSidebar />
       <SidebarInset>

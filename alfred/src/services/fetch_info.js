@@ -163,3 +163,21 @@ export function fireSessionEndBeacon(chatId) {
     `http://localhost:8000/session-end/${chatId}`
   );
 }
+
+
+
+
+
+// services/fetch_info.js — add this alongside your existing functions
+// services/fetch_info.js
+export async function logoutUser() {
+  try {
+    const res = await api.post('/logout',
+      { withCredentials: true }   // axios equivalent of fetch's credentials: "include"
+    )
+    return res.data   // ✅ axios already parses JSON — no res.json() needed
+  } catch (err) {
+    console.error("Logout error:", err)
+    throw err
+  }
+}

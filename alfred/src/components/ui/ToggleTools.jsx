@@ -6,35 +6,27 @@ import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 import { usechatStore } from "@/services/contextStrore"
 
+const TOOL_TIPS = {
+  web_search_enabled: "Allow Alfred to search the web for real-time information.",
+  remembring_enabled:
+    "Allow Alfred to build & access long-term memory across conversations. Slightly increases token usage.",
+}
 
+const SIZE     = 30
+const EXPANDED = 120
+const SIGN_PAD = 10
+const TEXT_PAD = 12
 
-
-// const TOOLS = [
-//   { id: "search",       icon: "ti-search",     label: "Web search",     enabled: true  },
-// ]
-
-const SIZE       = 30
-const EXPANDED   = 120
-const SIGN_PAD   = 10
-const TEXT_PAD   = 12
-
-export default function ToolsContextMenu({toggleTools,toggleTool}) {
-  const [open,    setOpen]    = useState(false)
+export default function ToolsContextMenu({ toggleTools, toggleTool }) {
+  const [open, setOpen]       = useState(false)
   const [hovered, setHovered] = useState(false)
-  const [active,  setActive]  = useState(false)
+  const [active, setActive]   = useState(false)
+  const [tipId, setTipId]     = useState(null)
   const menuRef    = useRef(null)
   const triggerRef = useRef(null)
-  const tools = toggleTools;
-  
-const toggle = (id) => {
-  toggleTool(id)
-  // read fresh state after update
-//   const updated = usechatStore.getState().toggleTools.find(t => t.id === id)
-//   console.log(updated.enabled) // ← correct value
-}
-    
+  const tools = toggleTools
 
-    
+  const toggle = (id) => toggleTool(id)
 
   useEffect(() => {
     const handler = (e) => {
@@ -49,8 +41,6 @@ const toggle = (id) => {
 
   return (
     <div className="relative">
-
-      {/* Menu — opens upward */}
       {open && (
         <div
           ref={menuRef}
@@ -69,11 +59,38 @@ const toggle = (id) => {
           </p>
 
           {tools.map((tool, i) => (
-            <div key={tool.id}>
+            <div key={tool.id} className="relative">
               {i === 2 && <div className="h-px bg-zinc-800 my-1" />}
+
+              {/* ── Tooltip ── */}
+              {/* ── Tooltip ── */}
+{tipId === tool.id && TOOL_TIPS[tool.id] && (
+  <div
+    className={cn(
+      "absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 z-[60]",
+      "w-52 px-3 py-2 rounded-lg",
+      "bg-zinc-900 border border-violet-600/60",
+      "shadow-[0_4px_20px_rgba(0,0,0,0.4)]",
+      "pointer-events-none",
+      "animate-in fade-in-0 zoom-in-95 duration-150",
+    )}
+  >
+    <p className="text-[11.5px] leading-[1.45] text-zinc-300">
+      {TOOL_TIPS[tool.id]}
+    </p>
+    {/* Caret */}
+    <div
+      className="absolute left-1/2 -translate-x-1/2 -bottom-[5px]
+                 w-[10px] h-[10px] rotate-45
+                 bg-zinc-900 border-b border-r border-violet-600/60"
+    />
+  </div>
+)}
               <div
                 className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors"
                 role="menuitem"
+                onMouseEnter={() => setTipId(tool.id)}
+                onMouseLeave={() => setTipId(null)}
               >
                 <div className="flex items-center gap-2">
                   <tool.icon size={16} className="text-violet-400" />
@@ -91,7 +108,7 @@ const toggle = (id) => {
         </div>
       )}
 
-      {/* Trigger — VioletButton style */}
+      {/* Trigger button — unchanged */}
       <button
         ref={triggerRef}
         aria-label="Toggle tools"
@@ -103,21 +120,20 @@ const toggle = (id) => {
         onMouseUp={() => setActive(false)}
         onClick={() => setOpen(o => !o)}
         style={{
-          width:     hovered ? `${EXPANDED}px` : `${SIZE}px`,
-          height:    `${SIZE}px`,
-          transform: active ? "translate(2px,2px)" : "none",
+          width:      hovered ? `${EXPANDED}px` : `${SIZE}px`,
+          height:     `${SIZE}px`,
+          transform:  active ? "translate(2px,2px)" : "none",
           flexShrink: 0,
         }}
         className={cn(
           "relative flex items-center justify-start overflow-hidden outline-none cursor-pointer",
           "border border-violet-700/70",
           hovered ? "rounded-[999px]" : "rounded-[20px]",
-          active   ? "bg-violet-900"
+          active  ? "bg-violet-900"
           : hovered ? "bg-violet-950/90" : "bg-[#110d1f]",
           "transition-all duration-300 ease-[cubic-bezier(.4,0,.2,1)]",
         )}
       >
-        {/* Icon */}
         <span
           style={{
             minWidth:    `${SIZE}px`,
@@ -129,8 +145,6 @@ const toggle = (id) => {
         >
           <SlidersHorizontal size={SIZE * 0.45} strokeWidth={2} />
         </span>
-
-        {/* Label */}
         <span
           style={{
             maxWidth:     hovered ? `${EXPANDED - SIZE}px` : "0px",
@@ -144,7 +158,6 @@ const toggle = (id) => {
           Toggle tools
         </span>
       </button>
-
     </div>
   )
 }

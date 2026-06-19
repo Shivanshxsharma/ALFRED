@@ -174,7 +174,6 @@ export default function AuthPage() {
           height: 520,
           background: '#111114',
           border: '0.5px solid rgba(109,40,217,0.15)',
-          boxShadow: '0 24px 60px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(109,40,217,0.05)',
         }}
       >
        

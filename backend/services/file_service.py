@@ -37,12 +37,12 @@ md_converter = MarkItDown()
 
 
 def extract_text(path: str) -> str:
-    print(f"Extracting text from file: {path}")
+    # print(f"Extracting text from file: {path}")
     ext = path.split(".")[-1].lower()
     
     if ext in ("pdf", "docx", "doc", "pptx", "xlsx"):
         result = md_converter.convert(path)
-        print( "checkup-------------------------------------------" + result.text_content[:3000]) 
+        # print( "checkup-------------------------------------------" + result.text_content[:3000]) 
         return result.text_content
     
     elif ext in ("txt", "md"):
@@ -195,7 +195,7 @@ async def embed_and_index(
 
 
 async def get_file_text(file_hash: str, db) -> str | None:
-    # check cache first
+    print(_cache)
     if file_hash in _cache:
         return _cache[file_hash]
     
@@ -204,7 +204,7 @@ async def get_file_text(file_hash: str, db) -> str | None:
         {"file_hash": file_hash},
         {"full_text": 1}
     )
-    
+    print(doc)
     if doc and doc.get("full_text"):
         _cache[file_hash] = doc["full_text"]   # cache it
         return doc["full_text"]

@@ -3,6 +3,32 @@ from pydantic import BaseModel, Field,EmailStr,field_validator
 from typing import List , Annotated, Literal,Optional
 
 
+
+# constants.py
+class collections:
+    USERS = "users"
+    CHATS = "chats"
+    MESSAGES = "messages"
+    WIKI_PAGES = "wiki_pages"
+    FILE_CHUNKS = "file_chunks"
+
+# usage
+
+# never type the string directly
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #    ============= dataBase Models================
 class User(BaseModel):
     userid: str = Field(None)
@@ -10,7 +36,6 @@ class User(BaseModel):
     Last_Name:str=Field(...,description="last name of user")
     email:EmailStr=Field(...,description="email of the user")
     password_hash:Optional[str]=Field(None,description="hashed password of user")
-    chat_history:List[str]=Field(description="List of chat ids")
     refresh_token:str=Field(None,description="refresh token for user authentication")
     provider:Optional[str]=Field(None,description="authentication provider")
 
@@ -33,7 +58,7 @@ class Messages(BaseModel):
 class chats(BaseModel):
      chatId: str = Field(...,description="required id of chat")
      title:str=Field(description="title of chat")
-     messages:List[Messages]=Field(...,description="List of dictionaries which are Messages")
+     messages:int=Field(...,description="number of messages in chat")
      wiki_summarized_count: int = Field(0, description="Number of messages that have been summarized for wiki context")
 
 

@@ -6,7 +6,7 @@ import { Copy, Check } from "lucide-react";
 import { usechatStore } from '@/services/contextStrore'
 import { useShallow } from 'zustand/react/shallow';
 import  ToolBar  from './ToolBar';
-const Current_chat = () => {
+const Current_chat = ({ router }) => {
 
 
 
@@ -16,15 +16,15 @@ const newChatId = usechatStore(useShallow((state) => state.new_created_chatId));
 const fillOldChat = usechatStore(useShallow((state) => state.actions.fillOldChat));
 const files_array = usechatStore(useShallow((state) => state.files_array));
 useEffect(() => {
-  async function fetchMessages() {
+  async function fetchMessages(router) {
     try {
-      if( chatId!==null &&chatId!==newChatId) await fillOldChat(chatId);
+      if( chatId!==null &&chatId!==newChatId) await fillOldChat(chatId,router);
     } catch (error) {
       console.error("Failed to fetch old messages:", error);
     }
   }
   if (chatId) {
-    fetchMessages();
+    fetchMessages(router);
   }
 }, [chatId, fillOldChat]);
 

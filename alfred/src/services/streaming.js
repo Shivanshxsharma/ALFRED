@@ -52,11 +52,8 @@ export const streamChatResponse = async (
         }
 
         if (data.type === 'tool_start') {
-         if (data.tool_name === "tavily_search") return  // ← skip internal tool
-
           usechatStore.getState().actions.addTool({
             name: data.tool_name,
-            input: data.tool_input,
             status: "running"
           });
         }
@@ -68,6 +65,9 @@ export const streamChatResponse = async (
         }
 
         if (data.type === 'complete') {
+            usechatStore.getState().actions.updateTool(
+            data.tool_name, { status: "done" }
+          );
           if (isnew_Chat) {
             user_contextStore.setState((state) => ({
               ...state,

@@ -204,31 +204,27 @@ PostgreSQL, an update block saying "switched to PostgreSQL" is sufficient.
 # ── Main entry point ───────────────────────────────────────────────────────────
 
 async def run_summarizer(chat_id: str, db, user_id: str) -> None:
-    """
-    Entry point for the wiki summariser. 
-    Now explicitly scoped to a user_id for multi-tenant safety.
-    """
     try:
-        col = db["chats"]
+        chats_col = db["chats"]
+        msgs_col  = db["messages"]
 
-        chat = await col.find_one({"chatId": chat_id})
-
+        chat = await chats_col.find_one({"chatId": chat_id})
         if chat is None:
             print(f"[wiki_summarizer] chat {chat_id} not found — skipping")
             return
 
-        all_messages   = chat.get("messages", [])
+        total_messages = chat.get("message_count", 0)
         already_done   = chat.get("wiki_summarized_count", 0)
-        new_messages   = all_messages[already_done:]
-        total_messages = len(all_messages)
+        new_count      = total_messages - already_done
 
-        if len(new_messages) < MIN_MESSAGES:
-            print(f"[wiki_summarizer] chat {chat_id} only has {len(new_messages)} new message(s) since last summary — skipping")
+        if new_count < MIN_MESSAGES:
+            print(f"[wiki_summarizer] only {new_count} new messages — skipping")
             return
 
-        claim = await col.update_one(
+        # ✅ claim before fetching — prevents duplicate runs
+        claim = await chats_col.update_one(
             {
-                "chatId":                chat_id,
+                "chatId": chat_id,
                 "wiki_summarized_count": {"$eq": already_done},
             },
             {"$set": {"wiki_summarized_count": total_messages}},
@@ -238,14 +234,19 @@ async def run_summarizer(chat_id: str, db, user_id: str) -> None:
             print(f"[wiki_summarizer] chat {chat_id} already claimed — skipping")
             return
 
+        # ✅ await cursor to get actual list
+        new_messages = await msgs_col.find(
+            {"chatId": chat_id},
+            {"_id": 0, "role": 1, "content": 1}  # only fields needed
+        ).sort("created_at", 1).skip(already_done).to_list(None)
+
         conversation_text = _build_conversation_text(new_messages)
         if not conversation_text.strip():
             return
 
-        # ── Pass user_id to get_all_slugs ──
         existing_pages, categories = await asyncio.gather(
             get_all_slugs(user_id=user_id),
-            get_categories(),
+            get_categories(user_id=user_id),  # ✅ scoped to user
         )
 
         prompt = _build_prompt(conversation_text, existing_pages, categories)
@@ -255,23 +256,27 @@ async def run_summarizer(chat_id: str, db, user_id: str) -> None:
             temperature=0.2,
         ).with_structured_output(WikiConceptList)
 
-        result: WikiConceptList = await model.ainvoke([HumanMessage(content=prompt)])
+        wiki_result: WikiConceptList = await model.ainvoke(  # ✅ renamed to avoid shadowing
+            [HumanMessage(content=prompt)]
+        )
 
-        if not result.concepts:
+        if not wiki_result.concepts:
             print(f"[wiki_summarizer] no concepts extracted for chat {chat_id}")
             return
 
-        concepts     = result.concepts
+        concepts     = wiki_result.concepts
         session_date = date.today().isoformat()
 
+        # create new categories first
         for concept in concepts:
             if concept.action == "delete":
                 continue
             if concept.is_new_category and concept.category:
                 cat_result = await create_category(
-                    name        = concept.category,
-                    description = concept.category_description,
-                )
+                 name=concept.category,
+                description=concept.category_description,
+                user_id=user_id,
+                 )
                 if not cat_result.get("existing"):
                     print(f"[wiki_summarizer] new category created: '{concept.category}'")
 
@@ -281,29 +286,31 @@ async def run_summarizer(chat_id: str, db, user_id: str) -> None:
         for concept in concepts:
             try:
                 if concept.action == "delete":
-                    # ── Pass user_id to wiki_delete ──
-                    result = await wiki_delete(user_id=user_id, slug=concept.slug, confirm=True)
-                    if result.get("ok"):
+                    delete_result = await wiki_delete(  # ✅ separate variable
+                        user_id=user_id,
+                        slug=concept.slug,
+                        confirm=True
+                    )
+                    if delete_result.get("ok"):
                         delete_count += 1
                         print(f"[wiki_summarizer] deleted slug '{concept.slug}'")
                     else:
-                        print(f"[wiki_summarizer] delete failed for '{concept.slug}': {result.get('error')}")
+                        print(f"[wiki_summarizer] delete failed for '{concept.slug}': {delete_result.get('error')}")
                     continue
 
-                # ── Pass user_id to wiki_upsert ──
                 await wiki_upsert(
-                    user_id         = user_id,
-                    slug            = concept.slug,
-                    title           = concept.title,
-                    category        = concept.category,
-                    summary         = concept.summary,
-                    concept_content = concept.content,
-                    session_date    = session_date,
+                    user_id=user_id,
+                    slug=concept.slug,
+                    title=concept.title,
+                    category=concept.category,
+                    summary=concept.summary,
+                    concept_content=concept.content,
+                    session_date=session_date,
                 )
                 success_count += 1
 
             except Exception as e:
-                print(f"[wiki_summarizer] failed for slug '{concept.slug}' (action={concept.action}): {e}")
+                print(f"[wiki_summarizer] failed for slug '{concept.slug}': {e}")
                 continue
 
         print(

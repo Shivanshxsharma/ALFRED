@@ -4,7 +4,11 @@ import { v4 as uuidv4 } from "uuid"
 import { abortStream, streamChatResponse } from './streaming';
 import { use } from 'react';
 import { fetchOldMessages, fetchUserInfo } from './fetch_info';
-import { Globe2 } from "lucide-react";
+import { BrainIcon, Globe2 } from "lucide-react";
+import { useErrorBanner } from '@/components/ui/ErrorBanner';
+
+
+
 
 export const usechatStore = create(
   immer((set,get) => ({
@@ -16,13 +20,21 @@ export const usechatStore = create(
     files_array:[],
     isStreaming: false,
     abortController: null,
-
+    error: null,
     toggleTools:[
       { id: "web_search_enabled",       icon: Globe2,     label: "Web search",     enabled: true },
+      { id: "remembring_enabled",       icon: BrainIcon,     label: "Memory",     enabled: true },
     ],
 
     actions: {
 
+
+      showError: (message) => set((state) => {
+        state.error = message;
+        setTimeout(() => {
+          set((state) => { state.error = null; });
+        },5000);
+      }),
 
 setUpdateHistory: (val) => set((state) => {
   state.updateHistory = val
@@ -155,12 +167,14 @@ setFileServerData: (id, serverData) => set((state) => {
          });
        }),
 
-       updateTool: (tool_name, updates) => set((state) => {
-         const tool = state.tool_array.find(t => t.name === tool_name);       
-         if (tool) {
-           Object.assign(tool, updates); // updates = { status: "done" }
-         }
-       }),
+updateTool: (tool_name, updates) => set((state) => ({
+    // ✅ return new array — never mutate state directly
+    tool_array: state.tool_array.map(tool =>
+        tool.name === tool_name
+            ? { ...tool, ...updates }  // ✅ new object
+            : tool
+    )
+})),
 
 clearTools: () => set((state) => {
   state.tool_array = [];
@@ -239,17 +253,18 @@ appendStreamingChunk: (chunk) =>
 
 
 
-    fillOldChat: (chatid) =>{
+    fillOldChat: (chatid,router) =>{
+      // const { error, showError } = useErrorBanner()
       const chatId=get().curr_chatid;
-      const oldMessages= fetchOldMessages(chatid)
+      const oldMessages= fetchOldMessages(chatId)
       .then((messages) => {
         set((state) => {
           state.Curr_Conversation_array = messages;
         });
       })
       .catch((error) => {
+        get().actions.showError("Failed to load chat history");
         console.error("Failed to fetch old messages:", error);
-        alert("Failed to load chat history. Please try again.");  
         router.push('/chats');
     }
   )},
@@ -338,8 +353,8 @@ export const user_contextStore = create(immer((set, get) => ({
       updateUser: (user_data) => {
         set((state) => {
           state.user_id = user_data.userid;
-          state.first_name = user_data.First_Name;
-          state.last_name = user_data.Last_Name;
+          state.first_name = user_data.first_name;
+          state.last_name = user_data.last_name;
           state.email = user_data.email;
           state.image = user_data.image;
         });

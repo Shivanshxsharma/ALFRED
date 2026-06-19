@@ -10,6 +10,8 @@ import axios from 'axios'
 import { useChatActions, usechatStore, user_contextStore } from '@/services/contextStrore'
 import {fetchEventSource} from '@microsoft/fetch-event-source'
 import { DragDropZone } from './DragDropZone'
+import { ErrorBanner } from './ErrorBanner'
+import { useShallow } from 'zustand/shallow'
 
 
 
@@ -17,6 +19,7 @@ import { DragDropZone } from './DragDropZone'
 const ChatContainer = () => {
   const router = useRouter();
   const {chatId} = useParams(); 
+  const error = usechatStore(useShallow((state) => state.error));
   
 
 
@@ -41,15 +44,16 @@ user_contextStore.getState().actions.fetchUserInfo(router);
     // !isLoaded?
     // <Skeleton/>
     // :
-
+      
     <DragDropZone>
+      {/* <ErrorBanner message={error} /> */}
     <div className='w-full h-full  absolute  right-0 top-0'>
       <div className='mt-3 ml-2 absolute z-2  '>
         <SidebarTrigger/>
       </div>
       
      <div className='w-[99%] h-[83%]  absolute flex justify-center  right-0 top-0 z-1'>
-           <Current_chat  />
+           <Current_chat   router={router}/>
        </div>
        
       <div className='w-full flex justify-center  min-h-[15%]   absolute  bottom-3 left-0 right-0'>

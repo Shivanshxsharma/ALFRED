@@ -33,6 +33,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchuserHistory , fireSessionEnd } from "@/services/fetch_info";
 import { useParams } from "next/navigation";
 import { useRouter } from "next/navigation";
+import  AccountDropdown  from "./AccountDropdown";
 
 
 
@@ -56,6 +57,10 @@ const last_name = user_contextStore(useShallow((state) => state.last_name));
 const email = user_contextStore(useShallow((state) => state.email));
 const initialHistory = user_contextStore(useShallow((state) => state.chat_titles));
 const updateHistory  = user_contextStore(useShallow((state) => state.updateHistory));
+
+
+console.log("AppSidebar: first_name:", first_name, "last_name:", last_name, "email:", email, "initialHistory:", initialHistory, "updateHistory:", updateHistory);
+
 
 const setcurr_chatid = usechatStore(useShallow((state) => state.actions.setcurr_chatid)); 
 const curr_chatid = usechatStore(useShallow((state) => state.curr_chatid));
@@ -125,7 +130,6 @@ const handleNewChat = (curr_chatid) => {
 
   fireSessionEnd(oldChatId)   // fire-and-forget, non-blocking
 
-  // // router.push("/chats")       // navigate immediately, don't wait
 }
 
  
@@ -177,23 +181,24 @@ useEffect(() => {
   return (
     <Sidebar  collapsible="icon" variant="floating">
       <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <a href="/" className="">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg border-2 border-violet-700/30 bg-violet-900/50 text-sidebar-primary-foreground">
-                  <span className="text-lg font-bold">{first_name.charAt(0).toUpperCase()}</span>
-                </div>
-                <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-semibold">{first_name+" "+last_name}</span>
-                  <span className="text-xs">{email}</span>
-                </div>
-              </a>     
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
-
+  <SidebarMenu>
+    <SidebarMenuItem>
+      <AccountDropdown
+        trigger={
+          <SidebarMenuButton size="lg" asChild={false}>
+            <div className="flex aspect-square size-8 items-center justify-center rounded-lg border-2 border-violet-700/30 bg-violet-900/50 text-sidebar-primary-foreground">
+              <span className="text-lg font-bold">{first_name.charAt(0).toUpperCase()}</span>
+            </div>
+            <div className="flex flex-col gap-0.5 leading-none">
+              <span className="font-semibold">{first_name + " " + last_name}</span>
+              <span className="text-xs">{email}</span>
+            </div>
+          </SidebarMenuButton>
+        }
+      />
+    </SidebarMenuItem>
+  </SidebarMenu>
+</SidebarHeader>
 
       <SidebarContent >
         <SidebarGroup className="flex-none border-t" >
