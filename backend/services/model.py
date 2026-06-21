@@ -2,6 +2,7 @@
 import asyncio
 import json
 from logging import config
+from multiprocessing import process
 import operator
 import traceback
 from datetime import datetime
@@ -194,18 +195,6 @@ class chatState(TypedDict):
 
 _model = None
 
-
-def get_model() -> ChatGoogleGenerativeAI:
-    global _model
-    if _model is None:
-        _model = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
-            temperature=0,
-            streaming=True,
-            max_retries=1
-            
-        )
-    return _model
 
 
 # ---------------------------------------------------------------------------
@@ -617,12 +606,22 @@ async def stream_response(
 # ---------------------------------------------------------------------------
 # Title generation
 # ---------------------------------------------------------------------------
-async def gen_chat_title(prompt: str) -> str:
+def get_title_client():
+    return ChatOpenAI(
+        model="llama-3.1-8b-instant",
+        api_key=process.env.GROQ_API_KEY,
+        base_url="https://api.groq.com/openai/v1",
+        temperature=0.3,
+        max_tokens=20,
+    )
+
+
+async def gen_chat_title(prompt: str,model) -> str:
     class Title(BaseModel):
         title: str = Field(description="Chat title in 2–5 words based on the first prompt")
 
     try:
-        model = get_model()
+        model = get_title_client()
         result = await model.with_structured_output(Title).ainvoke(
             f"Generate a short chat title in 2-5 words based on this first user prompt.\n\nPrompt: {prompt}"
         )
