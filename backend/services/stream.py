@@ -13,5 +13,6 @@ llm=ChatGoogleGenerativeAI(
 )
 
 
-for chunk in llm.stream("create a new story of bruce wayne where he has to fight a japanese maniac minister who kills at niht by name of knight katana"):
-    print(chunk, end="", flush=True)
+if __name__ == "__main__":
+    for chunk in llm.stream("create a new story of bruce wayne where he has to fight a japanese maniac minister who kills at niht by name of knight katana"):
+        print(chunk, end="", flush=True)

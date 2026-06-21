@@ -88,7 +88,6 @@ export async function fetchuserHistory(page, PAGE_SIZE) {
 export async function fetchOldMessages(chatId) {
   try {
     const response = await api.get(`/getChatMessages?chatId=${chatId}`);
-    console.log('Old messages:', response.data);
     if (response.data && response.data.length === 1 && response.data[0].role == "human") {
       response.data.push({
         role: "ai",
@@ -98,7 +97,6 @@ export async function fetchOldMessages(chatId) {
 
 
 
-    console.log('Processed old messages:', response.data);
     return response.data; 
   } catch (error) {
     console.error('Failed to fetch old messages:', error);
@@ -164,7 +162,6 @@ export async function saveProviderKey(provider, key) {
       provider,
       api_key: key
     });
-    console.log('Provider key saved:', response.data);
     return response.data; 
   } catch (error) {
     console.error('Failed to save provider key:', error);

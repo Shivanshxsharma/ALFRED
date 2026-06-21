@@ -28,7 +28,6 @@ export default function CallbackPage() {
       {
       withCredentials: true
     })
-    console.log('Google auth response:', response.data)
      
 
     try {

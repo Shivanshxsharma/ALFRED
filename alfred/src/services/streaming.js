@@ -56,7 +56,6 @@ export const streamChatResponse = async (
           return;
         }
 
-        console.log("Received data:", data);
 
         if (data.type === 'stream') {
           onChunk(data.content);

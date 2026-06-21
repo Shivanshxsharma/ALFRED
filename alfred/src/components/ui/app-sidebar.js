@@ -59,9 +59,6 @@ const initialHistory = user_contextStore(useShallow((state) => state.chat_titles
 const updateHistory  = user_contextStore(useShallow((state) => state.updateHistory));
 
 
-console.log("AppSidebar: first_name:", first_name, "last_name:", last_name, "email:", email, "initialHistory:", initialHistory, "updateHistory:", updateHistory);
-
-
 const setcurr_chatid = usechatStore(useShallow((state) => state.actions.setcurr_chatid)); 
 const curr_chatid = usechatStore(useShallow((state) => state.curr_chatid));
 

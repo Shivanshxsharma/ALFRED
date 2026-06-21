@@ -195,7 +195,6 @@ async def embed_and_index(
 
 
 async def get_file_text(file_hash: str, db) -> str | None:
-    print(_cache)
     if file_hash in _cache:
         return _cache[file_hash]
     
@@ -204,7 +203,6 @@ async def get_file_text(file_hash: str, db) -> str | None:
         {"file_hash": file_hash},
         {"full_text": 1}
     )
-    print(doc)
     if doc and doc.get("full_text"):
         _cache[file_hash] = doc["full_text"]   # cache it
         return doc["full_text"]

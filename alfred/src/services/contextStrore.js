@@ -98,7 +98,6 @@ setFileServerData: (id, serverData) => set((state) => {
 
        removeFile: (fileId) => set((state) => {
         state.files_array = state.files_array.filter(file => file.id !== fileId);
-        console.log(state.files_array);
         }),
 
         updateFileProgress: (id, progress) => {
@@ -279,7 +278,6 @@ appendStreamingChunk: (chunk) =>
     
   )
 
-console.log("Old messages loaded:", get().Curr_Conversation_array);
 },
    
   stopStreaming: async () => {
@@ -380,7 +378,6 @@ export const user_contextStore = create(immer((set, get) => ({
             if (get().chat_titles.length === 0) set((state) => {
               state.chat_titles = data.chat_history || [];
             });
-            console.log(data);
           } else {
             console.log("user already fetched.....");
           }

@@ -34,7 +34,6 @@ export const signup=async(first_name,last_name,email,password_hash)=>{
             withCredentials:true
         });
         const data=response.data;
-        console.log("Signup response data:", data);
         return data; // Assuming the response contains user data and tokens
     } catch (error) {
         console.error("Signup failed:", error);

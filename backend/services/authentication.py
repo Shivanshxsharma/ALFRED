@@ -108,7 +108,6 @@ async def update_refresh_token(user_id: str, email: str, pg_db: AsyncSession):
         new_refresh_token = create_token({'userid': user_id, 'email': email}, expires_delta=timedelta(days=7))
 
         user = await get_user_by_userid(pg_db, user_id)
-        print(user)
         if user:
             user.refresh_token = new_refresh_token
             await pg_db.commit()

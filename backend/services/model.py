@@ -214,7 +214,7 @@ async def router_node(state: chatState,config: RunnableConfig) -> dict:
                 wiki_ctx = await build_wiki_context_block(user_id)
                 if wiki_ctx:
                     updates["wiki_map"] = wiki_ctx
-                    print(f"[router_node] Injected wiki context for user {wiki_ctx}")
+                    print(f"[router_node] Injected wiki context for user")
         except Exception as e:
             print(f"[router_node] Failed to fetch wiki context: {e}")
 
@@ -291,7 +291,7 @@ async def retrieval_node(state: chatState) -> dict:
         rag_context = "\n\n".join(
             f"[Chunk {c['chunk_index']}]\n{c['text']}" for c in chunks
         )
-        print(f"RAG CONTEXT: {rag_context}")
+        # print(f"RAG CONTEXT: {rag_context}")
 
         return {
             "injected_file_text": injected_file_text + rag_context,
@@ -376,7 +376,7 @@ async def chat_node(state: chatState, config:RunnableConfig) -> dict:
             llm = llm.bind_tools(active_tools)
 
         response = await llm.ainvoke(final_messages)
-        print(f"MODEL RESPONSE: {response}")
+        # print(f"MODEL RESPONSE: {response}")
         return {"messages": [response]}
 
     except Exception as e:
@@ -464,7 +464,6 @@ async def stream_response(
     )
     files_uploaded  = metadata.files_uploaded  if metadata and metadata.files_uploaded  else []
     images_uploaded = metadata.images_uploaded if metadata and metadata.images_uploaded else []
-    print(metadata)
     model_id = metadata.model_id if metadata and metadata.model_id else "gemini-2.5-flash"
 
 

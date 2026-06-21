@@ -10,7 +10,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import os
-print("API KEY:", os.getenv("TAVILY_API_KEY"))
 @tool
 def search_tool(query: str) -> str:
     """Search the web for latest and real-time information."""
