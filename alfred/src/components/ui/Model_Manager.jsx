@@ -1,24 +1,4 @@
-// ============================================================================
-// ModelManagerTable.jsx — Alfred AI Assistant (v6)
-// ============================================================================
-//
-// WHAT CHANGED FROM v5:
-//
-//  ✓ Card redesign   Replaced the flat header/body/footer card with a
-//                     premium "art panel + overlapping tab" layout: a
-//                     gradient glow zone (colored by provider.dot) up top,
-//                     a dark tab panel that overlaps upward into it
-//                     carrying the provider name + description, then the
-//                     model list, then a stat footer with a large model
-//                     count and connection status — mirroring a tactile
-//                     card-design reference while keeping the existing
-//                     dark/violet, border-forward visual language.
-//
-//  ✓ Kept            All store wiring, handleSave/saveProviderKey logic,
-//                     validation, key show/hide, save states, animations,
-//                     single file, Tailwind + lucide-react, named export.
-//
-// ============================================================================
+
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   Eye,

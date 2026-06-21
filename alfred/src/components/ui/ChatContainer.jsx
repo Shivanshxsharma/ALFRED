@@ -56,9 +56,12 @@ user_contextStore.getState().actions.fetchUserInfo(router);
            <Current_chat   router={router}/>
        </div>
        
-      <div className='w-full flex justify-center  min-h-[15%]   absolute  bottom-3 left-0 right-0'>
+      <div className='w-full flex justify-center  min-h-[15%]   absolute  bottom-6 left-0 right-0'>
         <div className='flex justify-center items-center w-[90%] md:w-[50%] absolute bottom-0 z-1   min-h-[90%] md:min-h-full'>
           <ChatInput router={router} />
+          <div className='text-xs text-zinc-500 absolute -bottom-5'>
+            <span>alfred can make mistakes , kidly verify important information</span>
+          </div>
         </div>
 
       </div>

@@ -238,7 +238,7 @@ appendStreamingChunk: (chunk) =>
               "meta_data": {
                 files_uploaded: get().files_array.filter(f => !f.error && f.type !== "image").map(f => ({ name: f.name, path: f.path,file_hash: f.file_hash, needs_rag: f.needs_rag })),
                 images_uploaded: get().files_array.filter(f => f.type === "image" && !f.error).map(f => ({ name: f.name, base64: f.base64, mime_type: f.mime_type })),
-                "model_id": "zai-glm-4.7",
+                "model_id": get().selectedModel,
                 toggled_tools: get().toggleTools.reduce((acc, tool) => {
                   acc[tool.id] = tool.enabled;
                   return acc;

@@ -12,17 +12,16 @@ const TOOL_TIPS = {
     "Allow Alfred to build & access long-term memory across conversations. Slightly increases token usage.",
 }
 
-const SIZE     = 30
+const SIZE = 30
 const EXPANDED = 120
-const SIGN_PAD = 10
 const TEXT_PAD = 12
 
 export default function ToolsContextMenu({ toggleTools, toggleTool }) {
-  const [open, setOpen]       = useState(false)
+  const [open, setOpen] = useState(false)
   const [hovered, setHovered] = useState(false)
-  const [active, setActive]   = useState(false)
-  const [tipId, setTipId]     = useState(null)
-  const menuRef    = useRef(null)
+  const [active, setActive] = useState(false)
+  const [tipId, setTipId] = useState(null)
+  const menuRef = useRef(null)
   const triggerRef = useRef(null)
   const tools = toggleTools
 
@@ -31,7 +30,7 @@ export default function ToolsContextMenu({ toggleTools, toggleTool }) {
   useEffect(() => {
     const handler = (e) => {
       if (
-        menuRef.current    && !menuRef.current.contains(e.target) &&
+        menuRef.current && !menuRef.current.contains(e.target) &&
         triggerRef.current && !triggerRef.current.contains(e.target)
       ) setOpen(false)
     }
@@ -62,30 +61,29 @@ export default function ToolsContextMenu({ toggleTools, toggleTool }) {
             <div key={tool.id} className="relative">
               {i === 2 && <div className="h-px bg-zinc-800 my-1" />}
 
-              {/* ── Tooltip ── */}
-              {/* ── Tooltip ── */}
-{tipId === tool.id && TOOL_TIPS[tool.id] && (
-  <div
-    className={cn(
-      "absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 z-[60]",
-      "w-52 px-3 py-2 rounded-lg",
-      "bg-zinc-900 border border-violet-600/60",
-      "shadow-[0_4px_20px_rgba(0,0,0,0.4)]",
-      "pointer-events-none",
-      "animate-in fade-in-0 zoom-in-95 duration-150",
-    )}
-  >
-    <p className="text-[11.5px] leading-[1.45] text-zinc-300">
-      {TOOL_TIPS[tool.id]}
-    </p>
-    {/* Caret */}
-    <div
-      className="absolute left-1/2 -translate-x-1/2 -bottom-[5px]
-                 w-[10px] h-[10px] rotate-45
-                 bg-zinc-900 border-b border-r border-violet-600/60"
-    />
-  </div>
-)}
+              {/* Tooltip */}
+              {tipId === tool.id && TOOL_TIPS[tool.id] && (
+                <div
+                  className={cn(
+                    "absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 z-[60]",
+                    "w-52 px-3 py-2 rounded-lg",
+                    "bg-zinc-900 border border-violet-600/60",
+                    "shadow-[0_4px_20px_rgba(0,0,0,0.4)]",
+                    "pointer-events-none",
+                    "animate-in fade-in-0 zoom-in-95 duration-150",
+                  )}
+                >
+                  <p className="text-[11.5px] leading-[1.45] text-zinc-300">
+                    {TOOL_TIPS[tool.id]}
+                  </p>
+                  {/* Caret */}
+                  <div
+                    className="absolute left-1/2 -translate-x-1/2 -bottom-[5px]
+                               w-[10px] h-[10px] rotate-45
+                               bg-zinc-900 border-b border-r border-violet-600/60"
+                  />
+                </div>
+              )}
               <div
                 className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors"
                 role="menuitem"
@@ -108,7 +106,7 @@ export default function ToolsContextMenu({ toggleTools, toggleTool }) {
         </div>
       )}
 
-      {/* Trigger button — unchanged */}
+      {/* Trigger button — Fixed button mechanics */}
       <button
         ref={triggerRef}
         aria-label="Toggle tools"
@@ -120,38 +118,44 @@ export default function ToolsContextMenu({ toggleTools, toggleTool }) {
         onMouseUp={() => setActive(false)}
         onClick={() => setOpen(o => !o)}
         style={{
-          width:      hovered ? `${EXPANDED}px` : `${SIZE}px`,
-          height:     `${SIZE}px`,
-          transform:  active ? "translate(2px,2px)" : "none",
+          width: hovered ? `${EXPANDED}px` : `${SIZE}px`,
+          height: `${SIZE}px`,
+          transform: active ? "translate(2px, 2px)" : "none",
           flexShrink: 0,
         }}
         className={cn(
           "relative flex items-center justify-start overflow-hidden outline-none cursor-pointer",
           "border border-violet-700/70",
-          hovered ? "rounded-[999px]" : "rounded-[20px]",
-          active  ? "bg-violet-900"
-          : hovered ? "bg-violet-950/90" : "bg-[#110d1f]",
-          "transition-all duration-300 ease-[cubic-bezier(.4,0,.2,1)]",
+          "rounded-[20px]",
+          active ? "bg-violet-900"
+            : hovered ? "bg-violet-950/90" : "bg-[#110d1f]",
+          "transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
         )}
       >
+        {/* Icon container — fixed width, centered content */}
         <span
           style={{
-            minWidth:    `${SIZE}px`,
-            paddingLeft: hovered ? `${SIGN_PAD}px` : "0px",
-            transition:  "padding .35s",
+            width: `${SIZE}px`,
+            height: `${SIZE}px`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
           }}
-          className="flex items-center justify-center shrink-0 text-violet-200 select-none"
+          className="text-violet-200 select-none"
           aria-hidden="true"
         >
           <SlidersHorizontal size={SIZE * 0.45} strokeWidth={2} />
         </span>
+
+        {/* Label — fixed animation timing */}
         <span
           style={{
-            maxWidth:     hovered ? `${EXPANDED - SIZE}px` : "0px",
-            opacity:      hovered ? 1 : 0,
+            maxWidth: hovered ? `${EXPANDED - SIZE - TEXT_PAD}px` : "0px",
+            opacity: hovered ? 1 : 0,
             paddingRight: hovered ? `${TEXT_PAD}px` : "0px",
-            fontSize:     "13px",
-            transition:   "opacity .25s, max-width .35s, padding .35s",
+            fontSize: "13px",
+            transition: "opacity 0.3s ease-[cubic-bezier(0.4,0,0.2,1)], max-width 0.3s ease-[cubic-bezier(0.4,0,0.2,1)], padding 0.3s ease-[cubic-bezier(0.4,0,0.2,1)]",
           }}
           className="text-violet-100 font-medium whitespace-nowrap select-none tracking-wide overflow-hidden"
         >

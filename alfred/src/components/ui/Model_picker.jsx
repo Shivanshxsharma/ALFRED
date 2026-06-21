@@ -1,4 +1,3 @@
-// ModelPicker.jsx — radio-style model selector, reading & writing selection via Zustand
 "use client"
 
 import { useState, useRef, useEffect } from "react"
@@ -27,55 +26,51 @@ const PROVIDER_LABEL = {
   openrouter_paid: "OpenRouter",
 }
 
-const SIZE     = 30
+const SIZE = 30
 const EXPANDED = 130
-const SIGN_PAD = 10
 const TEXT_PAD = 12
 
 export function ModelPicker() {
-    const [open, setOpen]       = useState(false)
-    const [hovered, setHovered] = useState(false)
-    const [active, setActive]   = useState(false)
-    const menuRef    = useRef(null)
-    const triggerRef = useRef(null)
-    const router     = useRouter()
-    
+  const [open, setOpen] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const [active, setActive] = useState(false)
+  const menuRef = useRef(null)
+  const triggerRef = useRef(null)
+  const router = useRouter()
 
-    useEffect(() => {
-        const handler = (e) => {
-            if (
-                menuRef.current    && !menuRef.current.contains(e.target) &&
-                triggerRef.current && !triggerRef.current.contains(e.target)
-            ) setOpen(false)
-        }
-        document.addEventListener("mousedown", handler)
-        return () => document.removeEventListener("mousedown", handler)
-    }, [])
+  useEffect(() => {
+    const handler = (e) => {
+      if (
+        menuRef.current && !menuRef.current.contains(e.target) &&
+        triggerRef.current && !triggerRef.current.contains(e.target)
+      ) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [])
 
-    
-    const availableModels = user_contextStore(useShallow((state) => state.connected_models))
-    const selectedModel    =usechatStore(useShallow((state) => state.selectedModel))
-    const setSelectedModel = usechatStore(useShallow((state) => state.actions.setSelectedModel))
-    const models = Object.entries(availableModels).map(([modelId, meta]) => ({ id: modelId, ...meta }))
-    const isEmpty = models.length === 0
-    const selectedMeta = models.find((m) => m.id === selectedModel)
-    
-  
+  const availableModels = user_contextStore(useShallow((state) => state.connected_models))
+  const selectedModel = usechatStore(useShallow((state) => state.selectedModel))
+  const setSelectedModel = usechatStore(useShallow((state) => state.actions.setSelectedModel))
+  const models = Object.entries(availableModels).map(([modelId, meta]) => ({ id: modelId, ...meta }))
+  const isEmpty = models.length === 0
+  const selectedMeta = models.find((m) => m.id === selectedModel)
+
   return (
     <div className="relative">
       {open && (
-          <div
+        <div
           ref={menuRef}
           role="radiogroup"
           aria-label="Select model"
           className={cn(
-              "absolute bottom-[calc(100%+10px)] left-1/2 -translate-x-1/2 z-50",
-              "w-72 p-1",
-              "bg-zinc-900 border border-zinc-700 rounded-xl",
-              "animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2 duration-150",
-            )}
-            style={{ transformOrigin: "bottom center" }}
-            >
+            "absolute bottom-[calc(100%+10px)] left-1/2 -translate-x-1/2 z-50",
+            "w-72 p-1",
+            "bg-zinc-900 border border-zinc-700 rounded-xl",
+            "animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2 duration-150",
+          )}
+          style={{ transformOrigin: "bottom center" }}
+        >
           <div className="flex items-center justify-between px-2 pt-1.5 pb-1">
             <p className="text-[11px] text-zinc-500 uppercase tracking-widest select-none">
               Models
@@ -164,13 +159,13 @@ export function ModelPicker() {
                     </div>
                   </TooltipContent>
                 </Tooltip>
-              )
-            })}
+              )}
+            )}
           </div>
         </div>
       )}
 
-      {/* Trigger — VioletButton mechanics, inlined to match ToolsContextMenu's pattern exactly */}
+      {/* Trigger — Fixed button mechanics */}
       <button
         ref={triggerRef}
         aria-label="Select model"
@@ -182,38 +177,44 @@ export function ModelPicker() {
         onMouseUp={() => setActive(false)}
         onClick={() => setOpen((o) => !o)}
         style={{
-          width:      hovered ? `${EXPANDED}px` : `${SIZE}px`,
-          height:     `${SIZE}px`,
-          transform:  active ? "translate(2px,2px)" : "none",
+          width: hovered ? `${EXPANDED}px` : `${SIZE}px`,
+          height: `${SIZE}px`,
+          transform: active ? "translate(2px, 2px)" : "none",
           flexShrink: 0,
         }}
         className={cn(
           "relative flex items-center justify-start overflow-hidden outline-none cursor-pointer",
           "border border-violet-700/70",
-          hovered ? "rounded-[999px]" : "rounded-[20px]",
-          active  ? "bg-violet-900"
-          : hovered ? "bg-violet-950/90" : "bg-[#110d1f]",
-          "transition-all duration-300 ease-[cubic-bezier(.4,0,.2,1)]",
+          "rounded-[20px]",
+          active ? "bg-violet-900"
+            : hovered ? "bg-violet-950/90" : "bg-[#110d1f]",
+          "transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
         )}
       >
+        {/* Icon container — fixed width, centered content */}
         <span
           style={{
-            minWidth:    `${SIZE}px`,
-            paddingLeft: hovered ? `${SIGN_PAD}px` : "0px",
-            transition:  "padding .35s",
+            width: `${SIZE}px`,
+            height: `${SIZE}px`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
           }}
-          className="flex items-center justify-center shrink-0 text-violet-200 select-none"
+          className="text-violet-200 select-none"
           aria-hidden="true"
         >
           <Cpu size={SIZE * 0.5} strokeWidth={2} />
         </span>
+
+        {/* Label — fixed animation timing */}
         <span
           style={{
-            maxWidth:     hovered ? `${EXPANDED - SIZE}px` : "0px",
-            opacity:      hovered ? 1 : 0,
+            maxWidth: hovered ? `${EXPANDED - SIZE - TEXT_PAD}px` : "0px",
+            opacity: hovered ? 1 : 0,
             paddingRight: hovered ? `${TEXT_PAD}px` : "0px",
-            fontSize:     "13px",
-            transition:   "opacity .25s, max-width .35s, padding .35s",
+            fontSize: "13px",
+            transition: "opacity 0.3s ease-[cubic-bezier(0.4,0,0.2,1)], max-width 0.3s ease-[cubic-bezier(0.4,0,0.2,1)], padding 0.3s ease-[cubic-bezier(0.4,0,0.2,1)]",
           }}
           className="text-violet-100 font-medium whitespace-nowrap select-none tracking-wide overflow-hidden truncate"
         >
