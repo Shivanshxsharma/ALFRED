@@ -1,4 +1,3 @@
-
 <div align="center">
 <?xml version="1.0" encoding="UTF-8"?>
 
@@ -15,6 +14,7 @@
 [![LangGraph](https://img.shields.io/badge/LangGraph-0.2-blue?style=flat-square)](https://langchain-ai.github.io/langgraph)
 [![Gemini](https://img.shields.io/badge/Gemini-2.5%20Flash-4285F4?style=flat-square&logo=google)](https://deepmind.google/technologies/gemini)
 [![Pinecone](https://img.shields.io/badge/Pinecone-Vector%20Search-6C47FF?style=flat-square)](https://pinecone.io)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-336791?style=flat-square&logo=postgresql)](https://supabase.com)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
 [Features](#features) · [Architecture](#architecture) · [Tech Stack](#tech-stack) · [Getting Started](#getting-started) · [Roadmap](#roadmap)
@@ -27,7 +27,7 @@
 
 Alfred is an AI assistant designed from the ground up to work **as a personal AI agent.**
 
-Most agents are easy to build. A few API calls, a prompt, a tool or two. Alfred is built around the harder problems: streaming that doesn't drop, a RAG pipeline that retrieves the right thing on follow-up questions, and a long-term memory system that actually remembers who you are.
+Most agents are easy to build. A few API calls, a prompt, a tool or two. Alfred is built around the harder problems: streaming that doesn't drop, a RAG pipeline that retrieves the right thing on follow-up questions, a long-term memory system that actually remembers who you are, and a multi-provider model layer that keeps working even when a single provider doesn't.
 
 The architecture was designed before a single line was written — validated against real engineering approaches from production systems, not just tutorials.
 
@@ -39,6 +39,7 @@ The architecture was designed before a single line was written — validated aga
 |---|---|
 | 🔍 **RAG Pipeline** | Upload any file. Ask anything about it. Structure-aware chunking via Microsoft MarkItDown preserves document semantics. Two-layer retrieval decides whether to use chat context or run vector search. |
 | 🧠 **Long-Term Memory** | LLM Wiki-based global memory system. Alfred remembers your projects, preferences, and decisions across all sessions — with relevancy decay and automated pruning. |
+| 🔀 **Multi-Model Routing** | Bring your own API keys for Google, Groq, Cerebras, Mistral, and OpenRouter. Alfred routes each request to the right model and falls back automatically when one is rate-limited. |
 | 🌐 **Live Web Search** | Real-time answers via Tavily. Alfred decides autonomously when to search vs answer from context. |
 | 🖼️ **Image Recognition** | Drop a screenshot, diagram, or photo. Alfred understands and responds to visual content. |
 | 📊 **Chart Generation** | Describe data or ask for a visualization — get a rendered Chart.js graph inline. |
@@ -61,6 +62,7 @@ graph TD
         UI["Chat UI<br/>(Zustand · Tailwind · Framer Motion)"]
         DND["Drag & Drop<br/>File Upload"]
         TOOLBAR["ToolBar<br/>Live Tool Display"]
+        MODELPICKER["Model Picker<br/>Connected Providers"]
         MD["Markdown Renderer<br/>(Mermaid · Chart.js)"]
     end
 
@@ -68,6 +70,7 @@ graph TD
         SSE["SSE Streaming<br/>StreamingResponse"]
         AUTH["Auth Layer"]
         ABORT["Abort Registry<br/>asyncio.Event"]
+        REGISTRY["Model Registry<br/>+ LLM Factory"]
     end
 
     subgraph Agent ["Agent — LangGraph"]
@@ -78,18 +81,21 @@ graph TD
     end
 
     subgraph External ["External Services"]
-        GEMINI["Gemini 2.5 Flash<br/>LLM + Vision"]
+        GEMINI["Gemini · Groq · Cerebras<br/>Mistral · OpenRouter"]
         EMBED["Gemini Embeddings<br/>text-embedding-004"]
         PINECONE[("Pinecone<br/>Vector Store")]
         TAVILY["Tavily<br/>Web Search"]
         MONGO[("MongoDB<br/>Checkpointer + Wiki")]
+        PG[("PostgreSQL<br/>Users · Keys · Prefs")]
     end
 
     User -->|"message / file"| UI
     DND --> UI
+    MODELPICKER --> UI
     UI -->|"fetchEventSource SSE"| SSE
     SSE --> AUTH
-    AUTH --> ROUTER
+    AUTH --> REGISTRY
+    REGISTRY -->|"resolved LLM client via config"| ROUTER
     ROUTER -->|"needs docs"| RETRIEVAL
     ROUTER -->|"needs web"| SEARCH
     ROUTER -->|"direct"| GENERATE
@@ -100,6 +106,7 @@ graph TD
     UI --> TOOLBAR
     UI --> MD
 
+    REGISTRY <-->|"decrypt key, build client"| PG
     RETRIEVAL <-->|"similarity search"| PINECONE
     RETRIEVAL <-->|"embed query"| EMBED
     SEARCH <-->|"live results"| TAVILY
@@ -163,7 +170,7 @@ flowchart TD
         VECTOR["vector_search via Pinecone<br/>(Top-K chunks)"]
         FULLTEXT["Fetch full text<br/>(small file, from DB)"]
         CONTEXT["Build Context Window"]
-        LLM["Generate Answer<br/>(Gemini 2.5 Flash)"]
+        LLM["Generate Answer<br/>(routed model)"]
         STREAM["Stream Response (SSE)"]
 
         Q --> CHECK
@@ -208,10 +215,52 @@ stateDiagram-v2
     end note
 
     note right of generate_node
-        streams token-by-token
-        via SSE with abort support
+        resolved LLM client is read
+        from RunnableConfig, not state —
+        streams token-by-token via SSE
+        with abort support
     end note
 ```
+
+---
+
+### Multi-Model Routing
+
+Alfred doesn't lock you into one provider. You bring your own API keys — Google AI Studio, Groq, Cerebras, Mistral, OpenRouter — and Alfred decides, per request, which model actually handles it.
+
+#### Why per-request, not per-graph
+
+Each provider's free tier has different real ceilings — not just a "context window" number, but a practical per-minute token budget that varies by an order of magnitude between models. A model that handles a long conversation with memory injected fine on one provider can reject the exact same payload on another. Hardcoding one model into the graph would mean rebuilding and redeploying every time a provider's limits or a user's available keys change.
+
+Instead, the LangGraph state machine is **compiled once at startup** — its node structure never changes per request. What changes per message is which LLM client gets handed to it, resolved fresh on every call and passed through `RunnableConfig`, never stored in graph state. State is checkpointed to MongoDB on every step; a live API client (holding a decrypted key and an open connection) has no business being persisted there.
+
+```mermaid
+flowchart LR
+    A["User sends message<br/>+ selected model_id"]
+    B["Model Registry<br/>lookup: provider, base_url,\ncapabilities"]
+    C["Decrypt API key<br/>(cache-first, DB fallback)"]
+    D["Build LLM client<br/>ChatOpenAI / ChatGoogleGenerativeAI"]
+    E["Pass via config.configurable<br/>NOT graph state"]
+    F["Compiled graph<br/>(built once at startup)"]
+    G["Node reads client<br/>from config, invokes"]
+
+    A --> B --> C --> D --> E --> F --> G
+
+    style B fill:#EEEDFE,stroke:#534AB7,color:#26215C
+    style C fill:#FAEEDA,stroke:#854F0B,color:#412402
+    style E fill:#FAECE7,stroke:#993C1D,color:#4A1B0C
+```
+
+#### How a model is selected, end to end
+
+1. **Frontend** — the user picks a model from a list scoped to *their own connected providers* (not every model that exists — only ones they have a saved key for). Selection is held in client-side state and sent as `model_id` alongside each message.
+2. **Backend lookup** — the registry resolves `model_id` to its provider, base URL, and capability flags (does this model support tool calling, does it accept a `temperature` param, is it a reasoning model).
+3. **Key resolution** — the user's encrypted key for that provider is decrypted once per request, with an in-memory TTL cache sitting in front of the database so repeated messages in the same conversation don't re-hit Postgres for every turn.
+4. **Client construction** — a single factory builds either a native Gemini client or an OpenAI-compatible client depending on provider, since most of Alfred's providers speak the same wire format.
+5. **Graph invocation** — the resolved client is attached to `config.configurable` for that single call and read inside whichever node actually needs to call the LLM. Nothing about the compiled graph itself changes.
+6. **Fallback** — if a call fails (rate limit, provider outage), Alfred can retry against the next model in a defined fallback order rather than surfacing a raw error.
+
+This means switching models, adding a new provider, or reacting to a rate limit are all changes to *data the graph reads*, never changes to the graph's shape.
 
 ---
 
@@ -341,6 +390,18 @@ wiki_read("shivansh")
 
 ---
 
+### Why Two Databases
+
+Alfred started on MongoDB alone — a good fit for chat history and the wiki memory system, both of which are naturally document-shaped and don't need relational guarantees. As Alfred grew toward handling real user accounts, encrypted credentials, and external integrations, a second class of data emerged with fundamentally different requirements: data that needs strict uniqueness, referential integrity, and transactional guarantees that a document store doesn't enforce by default.
+
+PostgreSQL (via Supabase) was introduced specifically for this — user accounts, encrypted provider API keys, and model preferences. These benefit from foreign key constraints (an API key row cannot silently outlive the user it belongs to), unique constraints enforced at the database level (one key per user per provider, not just by convention), and atomic transactions for anything involving credential state.
+
+The split isn't arbitrary: MongoDB stays the source of truth for anything conversational and append-heavy; PostgreSQL is the source of truth for anything identity- and credential-shaped. Each database is doing the job it's actually good at, rather than forcing one engine to cover both shapes of data.
+
+This same relational foundation is what upcoming integrations (GitHub, Jira-style external tools) will build on — actions against an external API need idempotent execution tracking and reliable token refresh, which is exactly the kind of guarantee a relational schema is built to provide.
+
+---
+
 ## Tech Stack
 
 ### Frontend
@@ -358,12 +419,13 @@ wiki_read("shivansh")
 |---|---|
 | Framework | FastAPI |
 | Agent Orchestration | LangGraph (state machine) |
-| LLM | Gemini 2.5 Flash (inference + vision) |
+| LLM Providers | Google AI Studio · Groq · Cerebras · Mistral · OpenRouter |
 | Embeddings | Gemini `text-embedding-004` |
 | Document Parsing | Microsoft MarkItDown (structure-aware) |
 | Vector Store | Pinecone |
 | Web Search | Tavily |
-| Database | MongoDB |
+| Document Database | MongoDB — chat history, wiki memory |
+| Relational Database | PostgreSQL (Supabase) — users, encrypted keys, preferences |
 | Checkpointer | `AsyncMongoDBSaver` (LangGraph) |
 | Streaming | `StreamingResponse` (SSE) |
 
@@ -376,7 +438,8 @@ wiki_read("shivansh")
 - Python 3.11+
 - Pinecone account
 - MongoDB instance
-- Google AI API key (Gemini)
+- PostgreSQL instance (Supabase or self-hosted)
+- At least one LLM provider API key (Google AI Studio, Groq, Cerebras, Mistral, or OpenRouter)
 - Tavily API key
 
 ### Backend
@@ -407,10 +470,16 @@ npm run dev
 ```env
 # backend/.env
 GOOGLE_API_KEY=
+GROQ_API_KEY=
+CEREBRAS_API_KEY=
+MISTRAL_API_KEY=
+OPENROUTER_API_KEY=
 PINECONE_API_KEY=
 PINECONE_INDEX_NAME=
 TAVILY_API_KEY=
 MONGODB_URI=                    # MongoDB connection string
+DATABASE_URL=                   # PostgreSQL connection string
+ENCRYPTION_KEY=                 # Fernet key for encrypting stored API keys
 
 # frontend/.env.local
 NEXT_PUBLIC_API_URL=http://localhost:8000
@@ -423,20 +492,20 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 - [x] RAG pipeline with structure-aware chunking (MarkItDown)
 - [x] Two-layer retrieval (chat context → vector search fallback)
 - [x] Live web search with autonomous routing
-- [x] Image recognition (Gemini Vision)
+- [x] Image recognition (Vision)
 - [x] Mermaid diagram generation
 - [x] Chart.js graph generation
 - [x] SSE streaming with abort support
 - [x] LLM Wiki global memory with relevancy decay
 - [x] Drag & drop file upload
+- [x] Multi-provider model routing with per-request resolution
+- [x] PostgreSQL layer for users, encrypted keys, and preferences
 - [ ] 3 AM memory pruning cron job
-- [ ] Redis inactivity trigger for auto-summarizer
+- [ ] Automatic fallback chain on provider rate limits
 - [ ] Semantic memory search via Pinecone (20+ pages)
 - [ ] GitHub integration (PR review, repo Q&A)
-- [ ] Multi-model switching
-- [ ] VS Code extension
+- [ ] Premium tier — usage-based limits and billing, built on the existing PostgreSQL layer
 - [ ] Google Suite via MCP connectors
-- [ ] Voice input (Whisper fine-tuned on Haryanvi dialect)
 
 ---
 
