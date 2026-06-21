@@ -4,14 +4,14 @@ from pymongo.errors import PyMongoError
 
 from ..models.models import new_Chat
 from ..core.config import get_db
-from ..services.authentication import verify_token
+from ..services.authentication import get_current_user, verify_token
 from ..core.database import getChatHistory, getChatMessages
 
-router = APIRouter(tags=["chats"])
+router = APIRouter(tags=["chats"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("/newChat")
-async def new_chat(req: new_Chat, db=Depends(get_db)):
+async def new_chat(req: new_Chat, db=Depends(get_db), user: dict = Depends(get_current_user)):
     try:
         first_msg_dict = req.First_Message.model_dump()
         new_chat_dict = {
@@ -24,7 +24,7 @@ async def new_chat(req: new_Chat, db=Depends(get_db)):
         new_chat_id = str(inserted_chat.inserted_id)
 
         await db["users"].update_one(
-            {"_id": ObjectId(req.userid)},
+            {"_id": ObjectId(user["userid"])},
             {"$push": {"chat_history": new_chat_id}}
         )
 
@@ -37,21 +37,16 @@ async def new_chat(req: new_Chat, db=Depends(get_db)):
 
 
 @router.get("/getChatHistory")
-async def get_chat_history(req: Request, page: int, size: int, db=Depends(get_db)):
+async def get_chat_history(req: Request, page: int, size: int, db=Depends(get_db),user: dict = Depends(get_current_user)):
     try:
-        data = verify_token(req.cookies.get('at'))
-        userid = data["userid"]
-        return await getChatHistory(userid=userid, page=page, page_size=size, db=db)
+        return await getChatHistory(userid=user["userid"], page=page, page_size=size, db=db)
     except HTTPException as he:
         raise he
 
 
 @router.get("/getChatMessages")
-async def get_chat_messages(req: Request, chatId: str, db=Depends(get_db)):
+async def get_chat_messages(req: Request, chatId: str, db=Depends(get_db),user: dict = Depends(get_current_user)):
     try:
-        data = verify_token(req.cookies.get('at'))
-        if not data:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or missing access token")
-        return await getChatMessages(userid=data["userid"], chatId=chatId, db=db)
+        return await getChatMessages(userid=user["userid"], chatId=chatId, db=db)
     except HTTPException as he:
         raise he

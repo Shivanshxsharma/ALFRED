@@ -4,6 +4,8 @@ from pathlib import Path
 from uuid import uuid4
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, UploadFile, status
 
+from backend.services.authentication import get_current_user
+
 from ..core.config import get_db
 from ..services.file_service import embed_and_index, store_file_doc, extract_text, check_duplicate, compute_hash
 
@@ -19,10 +21,10 @@ IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 async def upload_file(
     file: UploadFile,
     background_tasks: BackgroundTasks,
-    user_id: str = Form(...),
-    db=Depends(get_db)
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user)
 ):
-    print(f"Received upload request for user_id: {user_id}, filename: {file.filename}")
+    print(f"Received upload request for user_id: {user['userid']}, filename: {file.filename}")
     try:
         ext = Path(file.filename).suffix.lstrip(".").lower()
         contents = await file.read()
@@ -44,7 +46,7 @@ async def upload_file(
             f.write(contents)
 
         file_hash = compute_hash(contents)
-        duplicate_info = await check_duplicate(file, file_hash, db, user_id)
+        duplicate_info = await check_duplicate(file, file_hash, db, user["userid"])
         if duplicate_info is not None:
             return duplicate_info
 
@@ -52,7 +54,7 @@ async def upload_file(
         char_count = len(text)
         needs_rag = char_count > 1000
 
-        await store_file_doc(file_hash, file, path, user_id, needs_rag, char_count, text, db)
+        await store_file_doc(file_hash, file, path, user["userid"], needs_rag, char_count, text, db)
         print(f"File stored: {file.filename}")
 
         if needs_rag:

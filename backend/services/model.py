@@ -6,6 +6,9 @@ import operator
 import traceback
 from datetime import datetime
 from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI
+
+from backend.services.llm_factory import build_model_client
 
 load_dotenv()
 
@@ -21,7 +24,7 @@ from typing import Annotated, TypedDict
 
 from ..core.config import connect_db, get_db,client, get_sync_client,sync_client
 from ..core.database import add_to_Db
-from ..models.models import Message_data
+from ..models.models import Message_data, ToolCallData
 from ..services.abort import _cancel_events
 from .file_rag_system import read_file, vector_search
 from .file_service import get_file_text
@@ -29,7 +32,7 @@ from .web_search import search_tool
 from langchain_core.runnables import RunnableConfig
 # WIKI IMPORTS
 from .wiki_read_tools import wiki_read, build_wiki_context_block
-
+from sqlalchemy.ext.asyncio import AsyncSession
 
 TOOL_DISPLAY_NAMES = {
     "search_tool": "Searching the web",
@@ -322,7 +325,7 @@ async def retrieval_node(state: chatState) -> dict:
 
 
 
-async def chat_node(state: chatState) -> dict:
+async def chat_node(state: chatState, config:RunnableConfig) -> dict:
     print("in chat_node")
 
     try:
@@ -331,7 +334,6 @@ async def chat_node(state: chatState) -> dict:
         images_uploaded = state.get("images_uploaded", [])
         injected_file_text = state.get("injected_file_text", "")
         rag_files          = state.get("pre_rag_files", [])
-
         TOOL_MAP = {
             "web_search_enabled":   search_tool,
             "reading_files_enabled": read_file,
@@ -380,7 +382,7 @@ async def chat_node(state: chatState) -> dict:
             SystemMessage(content=get_system_prompt() + file_context + image_context + "\n\n" + state.get("wiki_map", "")),
         ] + non_system
 
-        llm = get_model()
+        llm = config["configurable"].get("model")
         if active_tools:
             llm = llm.bind_tools(active_tools)
 
@@ -437,14 +439,33 @@ def get_chatModel():
     return chat_model
 
 
-# ---------------------------------------------------------------------------
-# Streaming entry point
-# ---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 async def stream_response(
     prompt: str,
     chatId: str,
     db,
+    pg_db:AsyncSession,
     metadata,
     cancel_event: asyncio.Event,
     user_id: str,
@@ -454,9 +475,11 @@ async def stream_response(
     )
     files_uploaded  = metadata.files_uploaded  if metadata and metadata.files_uploaded  else []
     images_uploaded = metadata.images_uploaded if metadata and metadata.images_uploaded else []
+    print(metadata)
+    model_id = metadata.model_id if metadata and metadata.model_id else "gemini-2.5-flash"
 
-    toggled_tools = {**toggled_tools, "reading_files_enabled": True, "remembring_enabled": True}  # Always enable read_file and wiki_read for uploaded files
 
+    toggled_tools = {**toggled_tools, "reading_files_enabled": True, "remembring_enabled": True}  
 
     input_state = {
         "messages":       [HumanMessage(content=prompt)],
@@ -467,8 +490,10 @@ async def stream_response(
 
     model    = get_chatModel()
     finalres = ""
-    tool_data = Message_data()
-    CONFIG   = {"configurable": {"thread_id": chatId, "user_id": user_id}}
+    tool_data = ToolCallData()
+    model_metadata: Message_data = Message_data(model_id=model_id)
+    llm=await build_model_client(pg_db, user_id, model_id)
+    CONFIG   = {"configurable": {"thread_id": chatId, "user_id": user_id   , "model": llm}}
 
     try:
         async for event in model.astream_events(input_state, config=CONFIG, version="v2"):
@@ -510,12 +535,13 @@ async def stream_response(
                 {
                     "role":      "ai",
                     "content":   finalres,
-                    "meta_data": tool_data.model_dump(),
+                    "meta_data": model_metadata.model_dump(),
+                    "toolcalls": tool_data.model_dump(),
                 },
                 db,
             )
 
-        yield f"data: {json.dumps({'type': 'complete', 'content': finalres, 'meta_data': tool_data.model_dump()})}\n\n"
+        yield f"data: {json.dumps({'type': 'complete', 'content': finalres, 'meta_data': model_metadata.model_dump(), 'toolcalls': tool_data.model_dump()})}\n\n"
 
     except Exception as e:
         print("❌ Error in stream_response:")
@@ -549,7 +575,8 @@ async def stream_response(
                     {
                         "role":      "ai",
                         "content":   finalres,
-                        "meta_data": tool_data.model_dump(),
+                        "meta_data": model_metadata.model_dump(),
+                        "toolcalls": tool_data.model_dump(),
                     },
                     db,
                 )
@@ -560,6 +587,31 @@ async def stream_response(
             yield f"data: {json.dumps({'type': 'error', 'status': str(error_code), 'error_type': type(actual).__name__, 'role': 'system', 'content': error_message})}\n\n"
         except Exception:
             pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # ---------------------------------------------------------------------------

@@ -5,6 +5,8 @@ import jwt
 import bcrypt
 from fastapi import HTTPException, status
 from uuid import uuid4
+from fastapi import Request, HTTPException, status, Depends
+
 
 # ── CHANGED: Postgres imports replace Mongo-only imports ──────────────────
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -257,3 +259,21 @@ def create_token(data: dict, expires_delta: timedelta = None):
 
 
 
+
+async def get_current_user(req: Request) -> dict:
+    print("Authenticating user for request:", req.url.path)
+    token = req.cookies.get("at")
+    
+    if not token:
+        auth_header = req.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            print("Token found in Authorization header")
+    if not token:
+        print("No token found in cookies or Authorization header")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated, missing token"
+        )
+        
+    return verify_token(token)

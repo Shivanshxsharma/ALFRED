@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useRef, use } from "react"
+import React, { useState, useRef } from "react"
 import { CircleArrowUp, StopCircle } from "lucide-react"
 import { useChatActions, usechatStore } from "@/services/contextStrore"
 import { cn } from "@/lib/utils"
@@ -12,6 +12,7 @@ import { progress } from "framer-motion"
 import { uploadFile } from "@/services/fileUpload"
 import { Toggle } from "radix-ui"
 import ToolsContextMenu from "./ToggleTools"
+import { ModelPicker } from "./Model_picker"
 
 const MAX_HEIGHT = 200
 
@@ -93,6 +94,7 @@ export default function ChatInput({ router }) {
         />
 
         <ToolsContextMenu  toggleTools={toggleTools}  toggleTool={toggleTool}/>
+        <ModelPicker  />
         </div>
 
 

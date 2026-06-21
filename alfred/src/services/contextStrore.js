@@ -21,12 +21,19 @@ export const usechatStore = create(
     isStreaming: false,
     abortController: null,
     error: null,
+    selectedModel:"gemini-2.5-flash",
     toggleTools:[
       { id: "web_search_enabled",       icon: Globe2,     label: "Web search",     enabled: true },
       { id: "remembring_enabled",       icon: BrainIcon,     label: "Memory",     enabled: true },
     ],
 
     actions: {
+      
+
+      setSelectedModel: (model) => set((state) => {
+        state.selectedModel = model;
+      }),
+
 
 
       showError: (message) => set((state) => {
@@ -231,6 +238,7 @@ appendStreamingChunk: (chunk) =>
               "meta_data": {
                 files_uploaded: get().files_array.filter(f => !f.error && f.type !== "image").map(f => ({ name: f.name, path: f.path,file_hash: f.file_hash, needs_rag: f.needs_rag })),
                 images_uploaded: get().files_array.filter(f => f.type === "image" && !f.error).map(f => ({ name: f.name, base64: f.base64, mime_type: f.mime_type })),
+                "model_id": "zai-glm-4.7",
                 toggled_tools: get().toggleTools.reduce((acc, tool) => {
                   acc[tool.id] = tool.enabled;
                   return acc;
@@ -240,7 +248,6 @@ appendStreamingChunk: (chunk) =>
             (chunk) => get().actions.appendStreamingChunk(chunk), // Use callbacks
             (isStreaming) => get().actions.setisStreaming(isStreaming),
             isnew_Chat,
-            user_contextStore.getState().user_id,
             controller.signal
 
           );
@@ -267,8 +274,14 @@ appendStreamingChunk: (chunk) =>
         console.error("Failed to fetch old messages:", error);
         router.push('/chats');
     }
-  )},
 
+
+    
+  )
+
+console.log("Old messages loaded:", get().Curr_Conversation_array);
+},
+   
   stopStreaming: async () => {
   const { abortController, curr_chatid } = get();
   abortController?.abort(); 
@@ -331,24 +344,21 @@ export const useChatActions = () => usechatStore((state) => state.actions);
 
 
 
-
 export const user_contextStore = create(immer((set, get) => ({
-    user_id:"",
-    first_name:"",
-    last_name:"",
-    email:"",
-    image:"",
-    chat_titles:[],
-    updateHistory:false, 
+    user_id: "",
+    first_name: "",
+    last_name: "",
+    email: "",
+    image: "",
+    chat_titles: [],
+    updateHistory: false,
+    connected_models: {},        // ✅ object from the start, not []
+    connected_providers: [],     // this one IS genuinely a list (from get_connected_providers_with_hints), so [] is correct here
 
     actions: {
-
-       setUpdateHistory: (val) => set((state) => {
-  state.updateHistory = val
-  }),
-
-
-
+      setUpdateHistory: (val) => set((state) => {
+        state.updateHistory = val
+      }),
 
       updateUser: (user_data) => {
         set((state) => {
@@ -357,34 +367,29 @@ export const user_contextStore = create(immer((set, get) => ({
           state.last_name = user_data.last_name;
           state.email = user_data.email;
           state.image = user_data.image;
+          state.connected_providers = user_data.connected_providers || [];
+          state.connected_models = user_data.connected_models || {};   // ✅ fallback to {}, not []
         });
       },
 
-
-
-
-       fetchUserInfo: async (router)=>{
-        try{
-          if(get().user_id===""||get().user_id===null){
-             const data=await fetchUserInfo();
-             get().actions.updateUser(data)
-             if(get().chat_titles.length===0) set((state)=>{
-              state.chat_titles=data.chat_history||[];
-             });
-             console.log(data);
-          }else{
+      fetchUserInfo: async (router) => {
+        try {
+          if (get().user_id === "" || get().user_id === null) {
+            const data = await fetchUserInfo();
+            get().actions.updateUser(data)
+            if (get().chat_titles.length === 0) set((state) => {
+              state.chat_titles = data.chat_history || [];
+            });
+            console.log(data);
+          } else {
             console.log("user already fetched.....");
           }
-
         }
         catch (error) {
           console.error("failed fetch user info :", error);
           alert("failed to fetch user info , please log in again");
           router.push('/auth');
         }
-             
-       }
-
-
+      }
     },
 })));

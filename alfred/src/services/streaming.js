@@ -1,27 +1,38 @@
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { user_contextStore, usechatStore } from './contextStrore';
+import { ensureFreshToken } from './fetch_info';
 
 class FatalError extends Error {}
 
 export const streamChatResponse = async (
-  chatId, prompt, onChunk, onComplete, isnew_Chat, user_id, signal
+  chatId, prompt, onChunk, onComplete, isnew_Chat, signal
 ) => {
   try {
-    await fetchEventSource('http://127.0.0.1:8000/stream', {
+    await ensureFreshToken();
+    await fetchEventSource('http://localhost:8000/stream', {   // ✅ changed from 127.0.0.1
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       signal,
       body: JSON.stringify({
         is_new_chat: isnew_Chat,
-        user_id,
         chatId,
         prompt
       }),
-
+      // ... rest unchanged
       // stop retrying on non-2xx responses
       async onopen(response) {
         if (response.ok) return;
-
+          if (response.status === 401) {
+         try {
+      await api.post('/refresh');       // attempt one recovery
+      throw new Error("retry_after_refresh");  // non-Fatal → fetch-event-source retries the connection
+      } catch (refreshErr) {
+      onChunk("\n[Error]: Session expired. Please log in again.");
+      window.location.href = '/auth';
+      throw new FatalError("auth_failed");
+    }
+  }
         if (response.status === 429) {
           onChunk("\n[Error]: Rate limit exceeded. Please try again later.");
           throw new FatalError("rate_limit");
@@ -124,7 +135,7 @@ export const streamChatResponse = async (
 
 export const abortStream = async (chatId) => {
   try {
-    const response = await fetch(`http://127.0.0.1:8000/abort/${chatId}`, {
+    const response = await fetch(`http://localhost:8000/abort/${chatId}`, {
       method: 'POST'
     });
     const result = await response.json();

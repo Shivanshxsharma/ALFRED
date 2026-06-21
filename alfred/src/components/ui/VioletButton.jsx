@@ -1,18 +1,22 @@
 "use client"
 
-import { DiamondPlus, Plus } from "lucide-react"
+import { Cpu, DiamondPlus, Plus, SlidersHorizontal } from "lucide-react"
 import { useState } from "react"
 
 export default function VioletButton({
   label = "Add new",
-  icon = "+",
+  icon = "plus",
   size = 52,
   bare = false,
   onClick,
 }) {
   const [hovered, setHovered] = useState(false)
   const [active, setActive]   = useState(false)
-
+  const icons={
+    plus: <Plus size={size * 0.6} strokeWidth={2.5} />,
+    cpu: <Cpu size={size * 0.5} strokeWidth={1.5} />,
+    tools: <SlidersHorizontal size={size * 0.6} strokeWidth={2.5} />,
+  }
   const scale        = size / 52
   const collapsedPx  = size-1;
   const expandedPx   = Math.round(140 * scale)
@@ -62,7 +66,7 @@ export default function VioletButton({
   className="flex items-center justify-center shrink-0 text-violet-200 select-none"
   aria-hidden="true"
 >
-  <Plus size={size * 0.6} strokeWidth={2.5} />
+  {icons[icon] || icons["plus"]}
 </span>
 
 {/* label — no longer absolute */}

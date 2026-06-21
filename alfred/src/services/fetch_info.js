@@ -1,3 +1,4 @@
+// fetch_info.js
 import axios from "axios"
 import { user_contextStore } from "./contextStrore";
 
@@ -7,6 +8,33 @@ const api = axios.create({
   withCredentials: true 
 });
 
+
+// ── Refresh state — single source of truth for "when did we last refresh" ───
+let lastRefreshTime = 0;
+const ACCESS_TOKEN_LIFETIME_MS = 15 * 60_000;
+const REFRESH_BUFFER_MS = 60_000;
+
+// Every successful refresh, from ANY code path, goes through here so the
+// clock never drifts out of sync across the interceptor / proactive check / SSE recovery.
+export async function doRefresh() {
+  await api.post('/refresh');
+  lastRefreshTime = Date.now();
+}
+
+// Call this before opening any connection that the axios interceptor can't
+// protect (e.g. fetchEventSource for SSE). Skips the call entirely if a
+// refresh already happened recently enough.
+export async function ensureFreshToken() {
+  const now = Date.now();
+  if (now - lastRefreshTime > (ACCESS_TOKEN_LIFETIME_MS - REFRESH_BUFFER_MS)) {
+    try {
+      await doRefresh();
+    } catch (err) {
+      console.error("Proactive refresh failed:", err);
+      // let the caller's own 401 handling be the fallback
+    }
+  }
+}
 
 
 api.interceptors.response.use(
@@ -22,7 +50,7 @@ api.interceptors.response.use(
             originalRequest._retry = true;
 
             try {
-                await api.post('/refresh');
+                await doRefresh();
                 return api(originalRequest);
             } catch (refreshError) {
                window.location.href = '/auth';
@@ -33,10 +61,6 @@ api.interceptors.response.use(
         return Promise.reject(error);
     }
 );
-
-
-
-
 
 
 export async function fetchUserInfo() {
@@ -50,12 +74,9 @@ export async function fetchUserInfo() {
 }
 
 
-
-
-export async function fetchuserHistory(page,PAGE_SIZE) {
+export async function fetchuserHistory(page, PAGE_SIZE) {
   try {
     const response = await api.get(`/getChatHistory?page=${page}&size=${PAGE_SIZE}`);
-    // console.log('Chat history:', response.data);
     return response.data; 
   } catch (error) {
     console.error('Failed to fetch chat history:', error);
@@ -64,19 +85,20 @@ export async function fetchuserHistory(page,PAGE_SIZE) {
 }
 
 
-
-
 export async function fetchOldMessages(chatId) {
   try {
     const response = await api.get(`/getChatMessages?chatId=${chatId}`);
     console.log('Old messages:', response.data);
-    if(response.data && response.data.length === 1 && response.data[0].role=="human" ){
+    if (response.data && response.data.length === 1 && response.data[0].role == "human") {
       response.data.push({
         role: "ai",
         content: ""
       });
-
     }
+
+
+
+    console.log('Processed old messages:', response.data);
     return response.data; 
   } catch (error) {
     console.error('Failed to fetch old messages:', error);
@@ -85,11 +107,9 @@ export async function fetchOldMessages(chatId) {
 }
 
 
-
- export function getGoogleAuthUrl() {
+export function getGoogleAuthUrl() {
   const state = crypto.randomUUID() // CSRF token
   
-  // Store state in a short-lived cookie (Next.js server action or API route)
   const params = new URLSearchParams({
     client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
     redirect_uri: `http://localhost:3000/auth/callback`,
@@ -102,35 +122,8 @@ export async function fetchOldMessages(chatId) {
 }
 
 
-
-
-
-
-
-
-
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Add these two functions to your existing fetch_info.js
-// The existing axios `api` instance is already configured correctly:
-//   - baseURL: 'http://localhost:8000'
-//   - withCredentials: true   ← sends your auth cookies
-//   - 401 interceptor         ← auto-refreshes token if expired
-// ─────────────────────────────────────────────────────────────────────────────
-
-
-// ── Trigger 1: New Chat button ────────────────────────────────────────────────
-//
-// Uses your axios api instance — gets the 401 refresh interceptor for free.
-// Call this BEFORE navigating to the new chat page.
-// Fire-and-forget — no need to await at the call site.
-//
-// Usage:
-//   import { fireSessionEnd } from "@/store/fetch_info"
-//   fireSessionEnd(curr_chatid)   // non-blocking
-//   router.push("/chats")
-//
+// ── Session-end triggers ──────────────────────────────────────────────────────
+// Trigger 1: New Chat button — fire-and-forget, non-blocking.
 export async function fireSessionEnd(chatId) {
   if (!chatId) return;
   try {
@@ -142,42 +135,39 @@ export async function fireSessionEnd(chatId) {
 }
 
 
-// ── Trigger 2: Tab close (beforeunload) ───────────────────────────────────────
-//
-// Uses navigator.sendBeacon — the ONLY reliable way to fire on tab close.
-// axios / fetch get cancelled when the tab closes before they complete.
-// sendBeacon is queued by the browser and guaranteed to finish even mid-close.
-//
-// ⚠️  sendBeacon is cross-origin here (localhost:3000 → localhost:8000).
-//     Cookies ARE sent as long as your FastAPI CORS is configured with:
-//       allow_origins=["http://localhost:3000"]
-//       allow_credentials=True
-//     Which you already have in your CORSMiddleware.
-//
-// Usage: call this inside a beforeunload event listener only.
-//
+// Trigger 2: Tab close (beforeunload) — sendBeacon is the only reliable
+// way to fire on tab close; axios/fetch get cancelled mid-close.
 export function fireSessionEndBeacon(chatId) {
   if (!chatId) return;
-  // sendBeacon sends a POST — no body needed, auth comes from cookies
   navigator.sendBeacon(
     `http://localhost:8000/session-end/${chatId}`
   );
 }
 
 
-
-
-
-// services/fetch_info.js — add this alongside your existing functions
-// services/fetch_info.js
 export async function logoutUser() {
   try {
     const res = await api.post('/logout',
-      { withCredentials: true }   // axios equivalent of fetch's credentials: "include"
+      { withCredentials: true }
     )
-    return res.data   // ✅ axios already parses JSON — no res.json() needed
+    return res.data
   } catch (err) {
     console.error("Logout error:", err)
     throw err
+  }
+}
+
+
+export async function saveProviderKey(provider, key) {
+  try {
+    const response = await api.post(`/api-keys`, {
+      provider,
+      api_key: key
+    });
+    console.log('Provider key saved:', response.data);
+    return response.data; 
+  } catch (error) {
+    console.error('Failed to save provider key:', error);
+    throw error;
   }
 }

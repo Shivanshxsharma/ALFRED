@@ -21,7 +21,7 @@ export default function UploadButton({ onFile }) {
         className="hidden"
         onChange={handleChange}
       />
-        <VioletButton size={29} label="Attach" icon="+" bare onClick={() => inputRef.current.click()} />
+        <VioletButton size={29} label="Attach" icon="plus" bare onClick={() => inputRef.current.click()} />
     </>
   )
 }
