@@ -37,10 +37,16 @@ export const streamChatResponse = async (
           onChunk("\n[Error]: Rate limit exceeded. Please try again later.");
           throw new FatalError("rate_limit");
         }
+        if(response.status === 503) {
+          console.log("Model overload:", response);
+          onChunk("\n[Error]: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later");
+          throw new FatalError("service_unavailable");
+        }
         if (response.status >= 500) {
           onChunk("\n[Error]: Server error. Please try again later.");
           throw new FatalError("server_error");
         }
+
         if (response.status >= 400) {
           onChunk("\n[Error]: Request failed. Please try again.");
           throw new FatalError("client_error");
@@ -91,10 +97,10 @@ export const streamChatResponse = async (
           const { status } = data;
           console.error("Server-sent error:", status);
 
-          if (status === "ChatGoogleGenerativeAIError" || status === "429") {
+          if ( status === "429") {
             onChunk("\n[Error]: Rate limit exceeded. Please try again after recharging keys.");
           }else if (status === "503") {
-            onChunk("\n[Error]: Service unavailable. Please try again later.");
+            onChunk("\n[Error]: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.");
           } else if (status === "500") {
             onChunk("\n[Error]: Internal Server Error. Please try again later.");
           } else if (status === "ConnectError") {

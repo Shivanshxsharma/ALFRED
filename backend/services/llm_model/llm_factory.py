@@ -29,6 +29,7 @@ async def build_model_client(db : AsyncSession, user_id: str, model_id: str, tem
             google_api_key=api_key,
             temperature=temperature,
             streaming=True,
+            
         )
 
     # everyone else — Groq, Cerebras, Mistral, OpenRouter — shares this path
