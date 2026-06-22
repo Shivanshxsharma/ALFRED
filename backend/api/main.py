@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-origins = ["http://localhost:3000"]
+origins = ["FRONTEND_ORIGIN"]  # set this in .env to your frontend URL, e.g. "http://localhost:3000"
 
 app.add_middleware(
     CORSMiddleware,

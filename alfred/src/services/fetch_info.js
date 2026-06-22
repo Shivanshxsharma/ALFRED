@@ -4,7 +4,7 @@ import { user_contextStore } from "./contextStrore";
 
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000',
+  baseURL: process.env.BACKEND_URL || "http://localhost:8000",
   withCredentials: true 
 });
 
@@ -143,7 +143,7 @@ export async function fireSessionEnd(chatId) {
 export function fireSessionEndBeacon(chatId) {
   if (!chatId) return;
   navigator.sendBeacon(
-    `http://localhost:8000/session-end/${chatId}`
+    `${process.env.BACKEND_URL || "http://localhost:8000"}/session-end/${chatId}`
   );
 }
 

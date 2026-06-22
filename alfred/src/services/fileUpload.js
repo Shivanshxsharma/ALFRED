@@ -26,7 +26,7 @@ export function uploadFile(file, onProgress) {
     xhr.addEventListener("error", () => reject(new Error("Network error")))
     xhr.addEventListener("abort", () => reject(new Error("Upload aborted")))
 
-    xhr.open("POST", "http://localhost:8000/upload") // your FastAPI endpoint
+    xhr.open("POST", `${process.env.BACKEND_URL || "http://localhost:8000"}/upload`) // your FastAPI endpoint
     xhr.withCredentials = true;
     xhr.send(formData) // send user_id as part of the request
   })

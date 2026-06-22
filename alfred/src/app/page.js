@@ -2,20 +2,14 @@
 import React, { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
-const page = () => {
+const Page = () => {
+  const router = useRouter()
 
-    const router=useRouter();
+  useEffect(() => {
+    router.replace("/auth")
+  }, [router])
 
-
-    useEffect(() => {
-      router.replace("auth")
-    
-
-    }, [])
-    
-  return (
-    <div></div>
-  )
+  return <div></div>
 }
 
-export default page
+export default Page

@@ -9,7 +9,7 @@ export const streamChatResponse = async (
 ) => {
   try {
     await ensureFreshToken();
-    await fetchEventSource('http://localhost:8000/stream', {   // ✅ changed from 127.0.0.1
+    await fetchEventSource(`${process.env.BACKEND_URL || "http://localhost:8000"}/stream`, {   // ✅ changed from 127.0.0.1
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -134,7 +134,7 @@ export const streamChatResponse = async (
 
 export const abortStream = async (chatId) => {
   try {
-    const response = await fetch(`http://localhost:8000/abort/${chatId}`, {
+    const response = await fetch(`${process.env.BACKEND_URL || "http://localhost:8000"}/abort/${chatId}`, {
       method: 'POST'
     });
     const result = await response.json();
