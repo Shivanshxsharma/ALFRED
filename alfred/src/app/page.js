@@ -8,7 +8,7 @@ const page = () => {
 
 
     useEffect(() => {
-      router.replace("chats")
+      router.replace("auth")
     
 
     }, [])
