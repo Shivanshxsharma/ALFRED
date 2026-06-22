@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertCircle, X } from 'lucide-react';
+import { AlertCircle, X, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { login, signup } from '@/services/authentication';
 import { getGoogleAuthUrl } from '@/services/fetch_info';
 import logo from './icon0.svg';
+
 const GoogleIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -31,6 +32,11 @@ const kronaOne = { fontFamily: "'Krona One', sans-serif" };
 export default function AuthPage() {
   const router = useRouter();
   const [isSignUp, setIsSignUp] = useState(false);
+  // Tracks the full submit -> auth -> cookie-set -> navigate sequence.
+  // Disables the form and shows a spinner so the user can't double-submit,
+  // and so the UI reflects "we're not done yet" right up until navigation
+  // to /chats actually happens.
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', password: '', confirmPassword: ''
   });
@@ -60,10 +66,10 @@ export default function AuthPage() {
     }
   }, [formData.password, formData.confirmPassword]);
 
-  const loginAllowed = emailOk.login && formData.password.trim().length > 0 && !errors.login;
+  const loginAllowed = emailOk.login && formData.password.trim().length > 0 && !errors.login && !isSubmitting;
   const signupAllowed =
     formData.firstName.trim() && formData.lastName.trim() &&
-    emailOk.signup && formData.password.trim() && passMatch && !errors.signup;
+    emailOk.signup && formData.password.trim() && passMatch && !errors.signup && !isSubmitting;
 
   const handleGoogleAuth = () => {
     const { url, state } = getGoogleAuthUrl();
@@ -72,20 +78,30 @@ export default function AuthPage() {
   };
 
   const handleSubmit = async () => {
+    setIsSubmitting(true);
     try {
       if (isSignUp) {
         await signup(formData.firstName, formData.lastName, formData.email, formData.password);
       } else {
         await login(formData.email, formData.password);
       }
+      // The await above only resolves once the backend's response
+      // (including Set-Cookie headers) has been fully received and
+      // processed by the browser. router.push fires only after that,
+      // so cookies are reliably present by the time /chats mounts and
+      // calls fetchUserInfo. isSubmitting stays true through the
+      // navigation so the loader doesn't flicker off right before the
+      // route change.
       router.push('/chats');
     } catch (error) {
       const msg = error.response?.data?.detail || 'An unexpected error occurred';
       setErrors(p => ({ ...p, [isSignUp ? 'signup' : 'login']: msg }));
+      setIsSubmitting(false);
     }
   };
 
   const toggle = () => {
+    if (isSubmitting) return;
     setIsSignUp(p => !p);
     setFormData({ firstName: '', lastName: '', email: '', password: '', confirmPassword: '' });
     setErrors({ login: '', signup: '' });
@@ -124,10 +140,12 @@ export default function AuthPage() {
   const GoogleBtn = () => (
     <button
       onClick={handleGoogleAuth}
+      disabled={isSubmitting}
       className="w-full h-[37px] bg-white/[0.022] border border-white/[0.07] rounded-lg
         flex items-center justify-center gap-2 mb-[9px]
         text-[12px] text-violet-300/60
         hover:bg-white/[0.05] hover:border-white/[0.12] hover:text-violet-300
+        disabled:opacity-40 disabled:cursor-not-allowed
         transition-all duration-200"
     >
       <GoogleIcon />
@@ -135,22 +153,33 @@ export default function AuthPage() {
     </button>
   );
 
+  // Shows a spinner + "Please wait" label while isSubmitting is true,
+  // instead of the static label — this is the loader for "until tokens
+  // are set in the browser."
   const SubmitBtn = ({ label, allowed }) => (
     <motion.button
       onClick={handleSubmit}
-      disabled={!allowed}
-      whileHover={allowed ? { y: -1 } : {}}
-      whileTap={allowed ? { scale: 0.99 } : {}}
+      disabled={!allowed || isSubmitting}
+      whileHover={allowed && !isSubmitting ? { y: -1 } : {}}
+      whileTap={allowed && !isSubmitting ? { scale: 0.99 } : {}}
       className="w-full h-[38px] rounded-lg text-[10.5px] tracking-[2.2px] font-medium
         uppercase text-[#ede9fe] mb-[11px] cursor-pointer
-        disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+        disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200
+        flex items-center justify-center gap-2"
       style={{
         background: 'linear-gradient(135deg, #5b21b6 0%, #4c1d95 100%)',
         border: '0.5px solid rgba(109,40,217,0.35)',
-        boxShadow: allowed ? '0 4px 18px rgba(109,40,217,0.18)' : 'none',
+        boxShadow: (allowed && !isSubmitting) ? '0 4px 18px rgba(109,40,217,0.18)' : 'none',
       }}
     >
-      {label}
+      {isSubmitting ? (
+        <>
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          Please wait
+        </>
+      ) : (
+        label
+      )}
     </motion.button>
   );
 
@@ -176,7 +205,6 @@ export default function AuthPage() {
           border: '0.5px solid rgba(109,40,217,0.15)',
         }}
       >
-       
 
         {/* Sliding panel */}
         <motion.div
@@ -210,10 +238,12 @@ export default function AuthPage() {
             </p>
             <motion.button
               onClick={toggle}
+              disabled={isSubmitting}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               className="px-[30px] py-[9px] text-[10.5px] tracking-[2.2px] font-medium
-                uppercase text-violet-300 rounded-full transition-all duration-200"
+                uppercase text-violet-300 rounded-full transition-all duration-200
+                disabled:opacity-40 disabled:cursor-not-allowed"
               style={{
                 border: '0.5px solid rgba(139,92,246,0.38)',
                 background: 'rgba(109,40,217,0.1)',
@@ -234,7 +264,6 @@ export default function AuthPage() {
 
           <div className="w-[78%] max-w-[272px]">
             <ErrorBanner form="login" />
-            {/* <img src={logo} alt="Alfred" className="h-5 w-auto opacity-60" /> */}
             <h2 className="text-[18px] font-normal text-[#f0ebff] text-center mb-5 leading-snug" style={kronaOne}>
               Login
             </h2>
@@ -242,12 +271,14 @@ export default function AuthPage() {
               type="email" name="email" placeholder="Email address"
               value={formData.email}
               onChange={e => { handleInput(e); validateEmail(e.target.value, 'login'); }}
+              disabled={isSubmitting}
               className={`${fieldBase} ${formData.email && !emailOk.login ? fieldError : ''}`}
             />
             <input
               type="password" name="password" placeholder="Password"
               value={formData.password}
               onChange={handleInput}
+              disabled={isSubmitting}
               className={fieldBase}
             />
             <OrLine />
@@ -274,25 +305,29 @@ export default function AuthPage() {
             <div className="flex gap-2 mb-[9px]">
               <input type="text" name="firstName" placeholder="First name"
                 value={formData.firstName} onChange={handleInput}
-                // in the name row inputs, change placeholder class too
-                className="w-1/2 h-[38px] px-3 text-[13px] bg-white/[0.025] border border-violet-900/30 rounded-lg outline-none text-[#ddd6fe] placeholder:text-white/30 focus:border-violet-600/50 focus:ring-[3px] focus:ring-violet-900/7 transition-all duration-200"
+                disabled={isSubmitting}
+                className="w-1/2 h-[38px] px-3 text-[13px] bg-white/[0.025] border border-violet-900/30 rounded-lg outline-none text-[#ddd6fe] placeholder:text-white/30 focus:border-violet-600/50 focus:ring-[3px] focus:ring-violet-900/7 transition-all duration-200 disabled:opacity-50"
               />
               <input type="text" name="lastName" placeholder="Last name"
                 value={formData.lastName} onChange={handleInput}
-                className="w-1/2 h-[38px] px-3 text-[13px] bg-white/[0.025] border border-violet-900/30 rounded-lg outline-none text-[#ddd6fe] placeholder:text-white/30 focus:border-violet-600/50 focus:ring-[3px] focus:ring-violet-900/7 transition-all duration-200"
+                disabled={isSubmitting}
+                className="w-1/2 h-[38px] px-3 text-[13px] bg-white/[0.025] border border-violet-900/30 rounded-lg outline-none text-[#ddd6fe] placeholder:text-white/30 focus:border-violet-600/50 focus:ring-[3px] focus:ring-violet-900/7 transition-all duration-200 disabled:opacity-50"
               />
             </div>
             <input type="email" name="email" placeholder="Email address"
               value={formData.email}
               onChange={e => { handleInput(e); validateEmail(e.target.value, 'signup'); }}
+              disabled={isSubmitting}
               className={`${fieldBase} ${formData.email && !emailOk.signup ? fieldError : ''}`}
             />
             <input type="password" name="password" placeholder="Password"
               value={formData.password} onChange={handleInput}
+              disabled={isSubmitting}
               className={`${fieldBase} ${errors.signup === 'Passwords do not match' ? fieldError : ''}`}
             />
             <input type="password" name="confirmPassword" placeholder="Confirm password"
               value={formData.confirmPassword} onChange={handleInput}
+              disabled={isSubmitting}
               className={`${fieldBase} ${errors.signup === 'Passwords do not match' ? fieldError : ''}`}
             />
             <OrLine />

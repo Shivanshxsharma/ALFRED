@@ -15,11 +15,11 @@ router = APIRouter(tags=["auth"])
 def _set_auth_cookies(res: Response, refresh_token: str, access_token: str):
     res.set_cookie(
         key="rt", value=refresh_token, httponly=True,
-        secure=False, samesite="lax", max_age=7 * 24 * 60 * 60, path='/'
+        secure=True, samesite=None, max_age=7 * 24 * 60 * 60, path='/'
     )
     res.set_cookie(
         key="at", value=access_token, httponly=False,
-        secure=False, samesite="lax", max_age=15 * 60, path='/'
+        secure=True, samesite=None, max_age=15 * 60, path='/'
     )
 
 # backend/routers/auth.py — update each route

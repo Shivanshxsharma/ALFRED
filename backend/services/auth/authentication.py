@@ -38,6 +38,11 @@ async def log_in(user_email: str, password: str, pg_db: AsyncSession):
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="No user found with the provided email"
             )
+        if user.provider != "email":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"User registered with different provider, please log in using that method"
+            )
 
         stored_password_hash = user.password_hash
         if not bcrypt.checkpw(password.encode('utf-8'), stored_password_hash.encode('utf-8')):
@@ -46,8 +51,8 @@ async def log_in(user_email: str, password: str, pg_db: AsyncSession):
                 detail="Incorrect password"
             )
 
-        access_token = create_token({"userid": user.userid, "email": user.email})
-        refresh_token = await update_refresh_token(user.userid, user.email, pg_db)  # ✅ pass same session
+        access_token = create_token({"userid": str(user.userid), "email": user.email})
+        refresh_token = await update_refresh_token(str(user.userid), user.email, pg_db)  # ✅ pass same session
 
         return {
             "access_token": access_token,
