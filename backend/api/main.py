@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.concurrency import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,7 +33,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-origins = ["FRONTEND_ORIGIN"]  # set this in .env to your frontend URL, e.g. "http://localhost:3000"
+origins = [os.getenv("FRONTEND_URL")]  # set this in .env to your frontend URL, e.g. "http://localhost:3000"
 
 app.add_middleware(
     CORSMiddleware,
