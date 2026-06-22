@@ -26,11 +26,18 @@ const ChatContainer = () => {
   useEffect(() => {
     usechatStore.getState().actions.setcurr_chatid(chatId);
     user_contextStore.getState().actions.fetchUserInfo(router);
-  }, []);
+    if (chatId) {
+      usechatStore.getState().actions.fillOldChat(chatId, router);
+    }
+  }, [chatId]);
 
+  // Only wait on chat-history loading if there IS a chatId (i.e. we're on
+  // /chats/[chatId], an existing conversation). On /chats with no ID,
+  // there's nothing to fetch, so the chat-loaded check is skipped entirely.
+  const isWaitingOnUser = isUserInfoLoading || !isUserInfoLoaded;
+  const isWaitingOnChat = chatId ? (isLoadingChat || !isChatLoaded) : false;
 
-
-  if ( isUserInfoLoaded && (isLoadingChat || !isChatLoaded)) {
+  if (isWaitingOnUser || isWaitingOnChat) {
     return <Skeleton />;
   }
 
