@@ -17,6 +17,18 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 
+import cloudinary
+import cloudinary.uploader
+import tempfile
+
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+    secure=True,
+)
+
+
 @router.post("/upload")
 async def upload_file(
     file: UploadFile,
@@ -39,30 +51,51 @@ async def upload_file(
                 "mime_type": file.content_type,
             }
 
-        filename = f"{uuid4()}{Path(file.filename).suffix}"
-        path = os.path.join(UPLOAD_DIR, filename).replace("\\", "/")
-
-        with open(path, "wb") as f:
-            f.write(contents)
-
         file_hash = compute_hash(contents)
         duplicate_info = await check_duplicate(file, file_hash, db, user["userid"])
         if duplicate_info is not None:
             return duplicate_info
 
-        text = extract_text(path)
-        char_count = len(text)
-        needs_rag = char_count > 1000
+        # Write to a temp file just long enough to extract text and upload.
+        # tempfile.gettempdir() is always writable on Render, even though
+        # it's still ephemeral — that's fine here since we only need it
+        # for the duration of THIS request, not for later retrieval.
+        suffix = Path(file.filename).suffix
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp.write(contents)
+            tmp_path = tmp.name
 
-        await store_file_doc(file_hash, file, path, user["userid"], needs_rag, char_count, text, db)
-        print(f"File stored: {file.filename}")
+        try:
+            text = extract_text(tmp_path)
+            char_count = len(text)
+            needs_rag = char_count > 20000
+
+            # Upload to Cloudinary. resource_type="auto" lets Cloudinary
+            # detect PDFs/docs correctly instead of assuming an image.
+            upload_result = cloudinary.uploader.upload(
+                tmp_path,
+                resource_type="auto",
+                public_id=f"{user['userid']}/{file_hash}",
+                folder="alfred_uploads",
+                overwrite=False,
+            )
+            cloud_url = upload_result["secure_url"]
+
+        finally:
+            # Always clean up the temp file, success or failure.
+            os.remove(tmp_path)
+
+        await store_file_doc(file_hash, file, cloud_url, user["userid"], needs_rag, char_count, text, db)
+        print(f"File stored: {file.filename} -> {cloud_url}")
 
         if needs_rag:
-            background_tasks.add_task(embed_and_index, path, file_hash, text, db)
+            # Pass text directly instead of a path — embed_and_index
+            # shouldn't need to re-read the file from disk at all now.
+            background_tasks.add_task(embed_and_index, cloud_url, file_hash, text, db)
 
         return {
             "name": file.filename,
-            "path": path,
+            "path": cloud_url,
             "status": "uploaded",
             "file_hash": file_hash,
             "needs_rag": needs_rag,

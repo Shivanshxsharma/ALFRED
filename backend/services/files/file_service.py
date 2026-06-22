@@ -37,12 +37,12 @@ md_converter = MarkItDown()
 
 
 def extract_text(path: str) -> str:
-    # print(f"Extracting text from file: {path}")
+
     ext = path.split(".")[-1].lower()
     
     if ext in ("pdf", "docx", "doc", "pptx", "xlsx"):
         result = md_converter.convert(path)
-        # print( "checkup-------------------------------------------" + result.text_content[:3000]) 
+
         return result.text_content
     
     elif ext in ("txt", "md"):
