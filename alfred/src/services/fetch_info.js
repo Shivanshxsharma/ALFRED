@@ -4,7 +4,7 @@ import { user_contextStore } from "./contextStrore";
 
 
 const api = axios.create({
-  baseURL: process.env.BACKEND_URL || "http://localhost:8000",
+  baseURL: process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000",
   withCredentials: true 
 });
 
@@ -111,7 +111,7 @@ export function getGoogleAuthUrl() {
   
   const params = new URLSearchParams({
     client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-    redirect_uri: `${process.env.BACKEND_URL}/auth/callback`,
+    redirect_uri: `${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/callback`,
     response_type: 'code',
     scope: 'openid email profile',
     state,
@@ -143,7 +143,7 @@ export async function fireSessionEnd(chatId) {
 export function fireSessionEndBeacon(chatId) {
   if (!chatId) return;
   navigator.sendBeacon(
-    `${process.env.BACKEND_URL || "http://localhost:8000"}/session-end/${chatId}`
+    `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/session-end/${chatId}`
   );
 }
 
