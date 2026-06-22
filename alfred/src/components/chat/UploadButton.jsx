@@ -1,6 +1,6 @@
 import { useRef } from "react"
 import { DiamondPlusIcon } from "lucide-react"
-import VioletButton from "./VioletButton"
+import VioletButton from "@/components/common/VioletButton"
 
 export default function UploadButton({ onFile }) {
   const inputRef = useRef(null)

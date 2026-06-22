@@ -3,14 +3,14 @@
 import React, { use, useEffect,useRef, useState } from 'react'
 import ChatInput from './ChatInput'
 import Current_chat from './Current_chat'
-import { SidebarTrigger } from './sidebar'
-import Skeleton from './Skeleton'
+import { SidebarTrigger } from '@/components/ui/sidebar'
+import Skeleton from '@/components/ui/Skeleton'
 import { useSearchParams ,useRouter, useParams } from 'next/navigation'
 import axios from 'axios'
 import { useChatActions, usechatStore, user_contextStore } from '@/services/contextStrore'
 import {fetchEventSource} from '@microsoft/fetch-event-source'
 import { DragDropZone } from './DragDropZone'
-import { ErrorBanner } from './ErrorBanner'
+import { ErrorBanner } from '@/components/feedback/ErrorBanner'
 import { useShallow } from 'zustand/shallow'
 
 

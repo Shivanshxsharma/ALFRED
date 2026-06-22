@@ -1,7 +1,7 @@
 import os
 import asyncio
 from langchain_core.tools import tool
-from backend.services.file_service import embeddings_model, pinecone_index
+from backend.services.files.file_service import embeddings_model, pinecone_index
 
 async def vector_search(
     query: str,

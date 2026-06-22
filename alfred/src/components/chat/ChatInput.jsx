@@ -4,7 +4,7 @@ import React, { useState, useRef } from "react"
 import { CircleArrowUp, StopCircle } from "lucide-react"
 import { useChatActions, usechatStore } from "@/services/contextStrore"
 import { cn } from "@/lib/utils"
-import VioletButton from "./VioletButton"
+import VioletButton from "@/components/common/VioletButton"
 import UploadButton from "./UploadButton"
 import FileUploadScrollArea from "./filesPane"
 import { useShallow } from "zustand/shallow"
@@ -12,7 +12,7 @@ import { progress } from "framer-motion"
 import { uploadFile } from "@/services/fileUpload"
 import { Toggle } from "radix-ui"
 import ToolsContextMenu from "./ToggleTools"
-import { ModelPicker } from "./Model_picker"
+import { ModelPicker } from "@/components/models/Model_picker"
 
 const MAX_HEIGHT = 200
 

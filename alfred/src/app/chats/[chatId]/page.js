@@ -1,7 +1,7 @@
 
 import React from 'react'
-import Chatpage from '@/components/ui/Chatpage'
-import ChatContainer from '@/components/ui/ChatContainer';
+import Chatpage from '@/components/chat/Chatpage'
+import ChatContainer from '@/components/chat/ChatContainer';
 
 
 

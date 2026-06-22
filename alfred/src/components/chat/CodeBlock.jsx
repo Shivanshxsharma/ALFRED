@@ -5,7 +5,7 @@ import { Copy, Check } from "lucide-react";
 import mermaid from "mermaid";
 import { useShallow } from "zustand/shallow";
 import { usechatStore } from "@/services/contextStrore";
-import { ChartBlock } from "./ChartBlock";
+import { ChartBlock } from "@/components/common/ChartBlock";
 
 const FONT = "'IBM Plex Mono', monospace"
 

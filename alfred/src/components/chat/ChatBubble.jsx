@@ -5,7 +5,7 @@ import { usechatStore } from '@/services/contextStrore'
 import { useShallow } from 'zustand/react/shallow'
 import Markdown from './Markdown'
 import ToolBar from './ToolBar'
-import MessageFileChips from '../FileChip'
+import MessageFileChips from './FileChip'
 
 const ChatBubble = ({ index, lastindex, role, content, meta_data }) => {
   const isStreaming = usechatStore(useShallow((state) => state.isStreaming));

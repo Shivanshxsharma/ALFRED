@@ -96,7 +96,7 @@ MODEL_REGISTRY = {
                 "thinking": False, "vision": False,
                 "supports_tools": True, "supports_temperature": True,
             },
-            "qwen/qwen3-coder-480b:free": {
+            "qwen/qwen3-coder:free": {
                 "context": "1M", "best_for": "Code",
                 "thinking": False, "vision": False,
                 "supports_tools": True, "supports_temperature": True,

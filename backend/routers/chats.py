@@ -4,7 +4,7 @@ from pymongo.errors import PyMongoError
 
 from ..models.models import new_Chat
 from ..core.config import get_db
-from ..services.authentication import get_current_user, verify_token
+from ..services.auth.authentication import get_current_user, verify_token
 from ..core.database import getChatHistory, getChatMessages
 
 router = APIRouter(tags=["chats"], dependencies=[Depends(get_current_user)])

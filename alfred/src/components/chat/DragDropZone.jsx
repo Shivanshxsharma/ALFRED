@@ -10,7 +10,7 @@ import {
   DrawerTitle,
   DrawerDescription,
 } from "@/components/ui/drawer"
-import { ErrorBanner, useErrorBanner } from "./ErrorBanner"
+import { ErrorBanner, useErrorBanner } from "@/components/feedback/ErrorBanner"
 
 export function DragDropZone({ children }) {
   const [dropMessage, setDropMessage] = React.useState(null)

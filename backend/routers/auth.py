@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, Request
 
 from ..models.models import authenticate_User, create_User, OAuthCallbackRequest
 from ..core.config import get_db
-from ..services.authentication import (
+from ..services.auth.authentication import (
     get_current_user, log_in, sign_up, verify_token, update_refresh_token,
     create_token, log_in_with_google
 )
@@ -84,8 +84,12 @@ async def google_auth_endpoint(
         _set_auth_cookies(res, access_cred["refresh_token"], access_cred["access_token"])
         return {"message": "User logged in with Google successfully"}
     except HTTPException as he:
+        import traceback
+        traceback.print_exc() 
         raise he
     except Exception as e:
+        import traceback
+        traceback.print_exc() 
         print(f"Error in Google authentication: {e}")
         raise HTTPException(status_code=500, detail=f"Error during Google authentication: {e}")
     

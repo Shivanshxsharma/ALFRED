@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from backend.core.pg_database import get_pg_db
 from backend.repos.api_key_repo import get_connected_providers_with_hints, upsert_api_key,  delete_api_key
 from backend.core.model_registry import MODEL_REGISTRY
-from backend.services.authentication import get_current_user
+from backend.services.auth.authentication import get_current_user
 
 router = APIRouter(prefix="/api-keys", tags=["api-keys"],dependencies=[Depends(get_current_user)])
 

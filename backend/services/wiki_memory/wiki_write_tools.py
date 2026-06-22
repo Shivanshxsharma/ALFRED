@@ -4,7 +4,7 @@ Alfred Wiki — Write Tools
 
 from __future__ import annotations
 import asyncio
-from backend.services.wiki_db import (
+from backend.services.wiki_memory.wiki_db import (
     WIKI_NAMESPACE,
     _col,
     _embed,

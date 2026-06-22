@@ -8,7 +8,7 @@ import asyncio
 import re
 from datetime import datetime, timezone
 from typing import Any
-from .file_service import embeddings_model, pinecone_index as _default_pinecone
+from ..files.file_service import embeddings_model, pinecone_index as _default_pinecone
 from pymongo import ASCENDING
 from backend.core.config import get_db
 

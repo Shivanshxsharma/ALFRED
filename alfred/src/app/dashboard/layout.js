@@ -1,6 +1,6 @@
 // app/(dashboard)/layout.jsx
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
-import { AppSidebar } from "@/components/ui/app-sidebar"
+import { AppSidebar } from "@/components/layout/app-sidebar"
 
 export default function DashboardLayout({ children }) {
   return (

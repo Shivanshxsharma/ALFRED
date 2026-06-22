@@ -1,7 +1,7 @@
 
 import React from 'react'
-import ChatInput from '@/components/ui/ChatInput'
-import ChatContainer from '@/components/ui/ChatContainer'
+import ChatInput from '@/components/chat/ChatInput'
+import ChatContainer from '@/components/chat/ChatContainer'
 
 
 import {
@@ -10,8 +10,8 @@ import {
 } from '@/components/ui/sidebar'
 
 
-import { AppSidebar } from '@/components/ui/app-sidebar'
-import Chatpage from '@/components/ui/Chatpage'
+import { AppSidebar } from '@/components/layout/app-sidebar'
+import Chatpage from '@/components/chat/Chatpage'
 
 
 

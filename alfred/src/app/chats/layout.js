@@ -1,6 +1,6 @@
 import React from 'react'
-import ChatInput from '@/components/ui/ChatInput'
-import ChatContainer from '@/components/ui/ChatContainer'
+import ChatInput from '@/components/chat/ChatInput'
+import ChatContainer from '@/components/chat/ChatContainer'
 
 
 import {
@@ -9,9 +9,9 @@ import {
 } from '@/components/ui/sidebar'
 
 
-import { AppSidebar } from '@/components/ui/app-sidebar'
+import { AppSidebar } from '@/components/layout/app-sidebar'
 import "../globals.css"
-import { ErrorBanner } from '@/components/ui/ErrorBanner'
+import { ErrorBanner } from '@/components/feedback/ErrorBanner'
 import { usechatStore } from '@/services/contextStrore'
 
 export default function RootLayout({ children }) {

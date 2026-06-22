@@ -4,10 +4,10 @@ from pathlib import Path
 from uuid import uuid4
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, UploadFile, status
 
-from backend.services.authentication import get_current_user
+from backend.services.auth.authentication import get_current_user
 
 from ..core.config import get_db
-from ..services.file_service import embed_and_index, store_file_doc, extract_text, check_duplicate, compute_hash
+from ..services.files.file_service import embed_and_index, store_file_doc, extract_text, check_duplicate, compute_hash
 
 router = APIRouter(tags=["files"])
 

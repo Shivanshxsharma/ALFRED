@@ -7,7 +7,7 @@ import {
 } from '@tanstack/react-query'
 const queryClient = new QueryClient()
 import "./globals.css"
-import { ErrorBanner } from '@/components/ui/ErrorBanner'
+import { ErrorBanner } from '@/components/feedback/ErrorBanner'
 
 export default function RootLayout({ children }) {
   return (

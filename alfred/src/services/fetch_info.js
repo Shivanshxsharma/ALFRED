@@ -106,7 +106,8 @@ export async function fetchOldMessages(chatId) {
 
 
 export function getGoogleAuthUrl() {
-  const state = crypto.randomUUID() // CSRF token
+  try {
+  const state = crypto.randomUUID() 
   
   const params = new URLSearchParams({
     client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
@@ -119,15 +120,19 @@ export function getGoogleAuthUrl() {
   return { url: `https://accounts.google.com/o/oauth2/v2/auth?${params}`, state }
 }
 
+catch (error) {
+  console.log('Failed to generate Google auth URL:', error);
+  throw error;
+}
 
-// ── Session-end triggers ──────────────────────────────────────────────────────
-// Trigger 1: New Chat button — fire-and-forget, non-blocking.
+}
+
 export async function fireSessionEnd(chatId) {
   if (!chatId) return;
   try {
     await api.post(`/session-end/${chatId}`);
   } catch (error) {
-    // Non-fatal — summarizer failure should never block the user
+    
     console.error("[session-end] axios trigger failed:", error);
   }
 }

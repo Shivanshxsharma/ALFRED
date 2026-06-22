@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from backend.core.pg_database import get_pg_db
 
 from ..core.config import get_db
-from ..services.authentication import get_current_user, verify_token
+from ..services.auth.authentication import get_current_user, verify_token
 from ..core.database import getUserInfo
 
 router = APIRouter(tags=["user"])

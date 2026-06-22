@@ -4,8 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from ..core.pg_database import init_postgres
 from ..core.config import connect_db, close_db, get_db, get_sync_client
-from ..services.wiki_db import init_wiki, ensure_wiki_indexes, wiki_embed_fn
-from ..services.file_service import pinecone_index
+from ..services.wiki_memory.wiki_db import init_wiki, ensure_wiki_indexes, wiki_embed_fn
+from ..services.files.file_service import pinecone_index
 
 from ..routers import auth, user, chats, stream, files, session, api_keys
 

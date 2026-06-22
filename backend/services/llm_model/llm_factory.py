@@ -1,8 +1,8 @@
 # backend/core/llm_factory.py
 from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
-from ..core.model_registry import get_provider_for_model, get_base_url, is_valid_model
-from ..repos.api_key_repo import get_cached_api_key
+from ...core.model_registry import get_provider_for_model, get_base_url, is_valid_model
+from ...repos.api_key_repo import get_cached_api_key
 from sqlalchemy.ext.asyncio import AsyncSession
 
 async def build_model_client(db : AsyncSession, user_id: str, model_id: str, temperature: float = 0):

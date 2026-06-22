@@ -5,13 +5,13 @@ from fastapi.responses import StreamingResponse
 
 from backend.core.pg_database import get_pg_db
 
-from ..services.authentication import get_current_user
+from ..services.auth.authentication import get_current_user
 
 from ..models.models import add_to_Chat
 from ..core.config import get_db
-from ..services.model import stream_response
+from ..services.llm_model.model import stream_response
 from ..core.database import add_to_Db
-from ..services.abort import _cancel_events
+from ..services.abort.abort import _cancel_events
 
 router = APIRouter(tags=["stream"], dependencies=[Depends(get_current_user)])
 
@@ -60,7 +60,7 @@ async def stream_endpoint(req: add_to_Chat, db=Depends(get_db), pg_db=Depends(ge
 
 
 @router.post("/abort/{chatId}")
-async def abort_stream(chatId: str):
+async def abort_stream(chatId: str, user: dict = Depends(get_current_user)):
     event = _cancel_events.get(chatId)
     if event:
         event.set()

@@ -3,7 +3,7 @@
 import axios from 'axios'
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import AlfredLoader from '@/components/ui/AlfredLoder'
+import AlfredLoader from '@/components/feedback/AlfredLoader'
 
 export default function CallbackPage() {
   const router = useRouter()

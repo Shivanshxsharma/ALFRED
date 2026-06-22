@@ -7,7 +7,7 @@ from __future__ import annotations
 from langchain_core.tools import tool
 from langchain_core.runnables import RunnableConfig
 
-from backend.services.wiki_db import _col, serialize, now
+from backend.services.wiki_memory.wiki_db import _col, serialize, now
 
 
 async def build_wiki_context_block(user_id: str) -> str:

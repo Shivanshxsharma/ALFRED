@@ -14,17 +14,18 @@ async def create_user(
     last_name: str,
     email: str,
     password_hash: str,
-    refresh_token: str | None = None,   # ✅ ADDED
-    provider: str = "email",            # ✅ ADDED
+    refresh_token: str | None = None,   
+    provider: str = "email",            
 ) -> User:
+    
     user = User(
         userid=userid,
         first_name=first_name,
         last_name=last_name,
         email=email,
         password_hash=password_hash,
-        refresh_token=refresh_token,    # ✅ ADDED
-        provider=provider,              # ✅ ADDED
+        refresh_token=refresh_token,    
+        provider=provider,              
     )
     db.add(user)
 

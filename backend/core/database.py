@@ -12,6 +12,7 @@ from ..repos.api_key_repo import get_connected_providers_with_hints
 from ..repos.user_repo import get_user_by_userid
 from ..core.config import connect_db,get_db
 from ..models.models import chats,create_User,add_to_Chat,delete_chat,Messages,prompt_req,collections
+from ..services.llm_model.title_gen.title_generation import gen_chat_title
 import httpx
 
 
@@ -32,7 +33,6 @@ async def add_to_Db(new_chat: bool, user_id: str, chatId: str, prompt: dict, db)
         }
 
         if new_chat:
-            from ..services.model import gen_chat_title
             title = await gen_chat_title(prompt)
 
             new_chat_dict = {

@@ -1,7 +1,7 @@
 import React, { use, useEffect, useRef, useState } from 'react'
 import ChatBubble from './ChatBubble'
-import Loader from './Loader'
-import { Button } from './button'
+import Loader from '@/components/feedback/Loader'
+import { Button } from '@/components/ui/button'
 import { Copy, Check } from "lucide-react";
 import { usechatStore } from '@/services/contextStrore'
 import { useShallow } from 'zustand/react/shallow';

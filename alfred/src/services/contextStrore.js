@@ -5,7 +5,7 @@ import { abortStream, streamChatResponse } from './streaming';
 import { use } from 'react';
 import { fetchOldMessages, fetchUserInfo } from './fetch_info';
 import { BrainIcon, Globe2 } from "lucide-react";
-import { useErrorBanner } from '@/components/ui/ErrorBanner';
+import { useErrorBanner } from '@/components/feedback/ErrorBanner';
 
 
 

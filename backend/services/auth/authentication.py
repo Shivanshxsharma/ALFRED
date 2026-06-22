@@ -10,8 +10,8 @@ from fastapi import Request, HTTPException, status, Depends
 
 # ── CHANGED: Postgres imports replace Mongo-only imports ──────────────────
 from sqlalchemy.ext.asyncio import AsyncSession
-from ..core.pg_database import get_session_factory
-from ..repos.user_repo import get_user_by_email, get_user_by_userid, create_user
+from ...core.pg_database import get_session_factory
+from ...repos.user_repo import get_user_by_email, get_user_by_userid, create_user
 # ── END CHANGE ──────────────────────────────────────────────────────────
 
 load_dotenv()
@@ -25,7 +25,7 @@ GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 REDIRECT_URI = os.getenv("REDIRECT_URI")
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from ..repos.user_repo import get_user_by_email, get_user_by_userid, create_user
+from ...repos.user_repo import get_user_by_email, get_user_by_userid, create_user
 
 
 # Login Function ----------------------------------------------------------------------------------------
@@ -105,7 +105,7 @@ async def sign_up(first_name: str, last_name: str, email: str, password: str, pg
 # Update Refresh Token ----------------------------------------------------------------------------------------
 async def update_refresh_token(user_id: str, email: str, pg_db: AsyncSession):
     try:
-        new_refresh_token = create_token({'userid': user_id, 'email': email}, expires_delta=timedelta(days=7))
+        new_refresh_token = create_token({'userid': str(user_id), 'email': email}, expires_delta=timedelta(days=7))
 
         user = await get_user_by_userid(pg_db, user_id)
         if user:
@@ -148,9 +148,10 @@ async def log_in_with_google(code: str, pg_db: AsyncSession):
             )
             user_info = user_res.json()
 
-        return await get_or_create_user(user_info, pg_db)  # ✅ pass through
+        return await get_or_create_user(user_info, pg_db)  
 
     except httpx.HTTPError as e:
+        print(f"HTTP error during Google authentication: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"HTTP error during Google authentication: {e}"
@@ -175,10 +176,9 @@ async def get_or_create_user(user_info: dict, pg_db: AsyncSession):
         first_name, last_name = (name.split(" ", 1) + [""])[:2]
 
         user = await get_user_by_email(pg_db, email)
-
         if user:
             refresh_token = await update_refresh_token(user.userid, email, pg_db)
-            access_token = create_token({"userid": user.userid, "email": email})
+            access_token = create_token({"userid": str(user.userid), "email": email})
             return {
                 "access_token": access_token,
                 "refresh_token": refresh_token
@@ -191,13 +191,12 @@ async def get_or_create_user(user_info: dict, pg_db: AsyncSession):
                 first_name=first_name,
                 last_name=last_name,
                 email=email,
-                password_hash="",       # No password for Google accounts
+                password_hash="",       
                 provider="google", 
-                refresh_token=create_token({'userid': userid, 'email': email}, expires_delta=timedelta(days=7))  # Create and store refresh token immediately
+                refresh_token=create_token({'userid': str(userid), 'email': email}, expires_delta=timedelta(days=7))  # Create and store refresh token immediately
             )
 
-            access_token = create_token({"userid": userid, "email": email})
-            
+            access_token = create_token({"userid": str(userid), "email": email})
 
             return {
                 "access_token": access_token,
@@ -207,6 +206,8 @@ async def get_or_create_user(user_info: dict, pg_db: AsyncSession):
     except HTTPException:
         raise
     except Exception as e:
+        import traceback
+        traceback.print_exc() 
         print(f"Error in get_or_create_user: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

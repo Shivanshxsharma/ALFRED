@@ -1,7 +1,7 @@
 
 "use client";
 import { useCallback } from "react";
-import {ModelManagerTable} from "@/components/ui/Model_Manager";
+import {ModelManagerTable} from "@/components/models/Model_Manager";
 export default function ModelsSettingsPage() {
 
   const handleSaveKey = useCallback(async (providerName, key) => {
