@@ -30,7 +30,7 @@ const ChatContainer = () => {
 
 
 
-  if ( chatId!=undefined && (isLoadingChat || !isChatLoaded)) {
+  if ( isUserInfoLoaded && (isLoadingChat || !isChatLoaded)) {
     return <Skeleton />;
   }
 
