@@ -5,7 +5,7 @@ export const login=async(email,password_hash)=>{
 
 
     try {
-        const response = await axios.post('http://localhost:8000/login',{
+        const response = await axios.post(`${process.env.BACKEND_URL}/login`,{
             email: email,
             password_hash: password_hash
         },{
@@ -25,7 +25,7 @@ export const login=async(email,password_hash)=>{
 
 export const signup=async(first_name,last_name,email,password_hash)=>{
     try {
-        const response = await axios.post('http://localhost:8000/signup', { 
+        const response = await axios.post(`${process.env.BACKEND_URL}/signup`, { 
             First_Name:first_name,
             Last_Name:last_name,
             email: email,
