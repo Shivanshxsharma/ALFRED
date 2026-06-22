@@ -111,7 +111,7 @@ export function getGoogleAuthUrl() {
   
   const params = new URLSearchParams({
     client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-    redirect_uri: `${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/callback`,
+    redirect_uri: `${process.env.NEXT_PUBLIC_FRONTEND_URL}/auth/callback`,
     response_type: 'code',
     scope: 'openid email profile',
     state,
