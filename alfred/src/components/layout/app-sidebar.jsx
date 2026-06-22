@@ -132,7 +132,7 @@ const handleNewChat = (curr_chatid) => {
  
 
 const items = [
-  { title: "New chat", url: "/", icon: Pen , handler: handleNewChat},
+  { title: "New chat", url: "/chats", icon: Pen , handler: handleNewChat},
 
 ];
 
