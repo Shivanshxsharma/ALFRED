@@ -21,7 +21,6 @@ def get_title_client():
 
 
 async def gen_chat_title(prompt: str) -> str:
-    print(f"API Key: {api_key}")
     class Title(BaseModel):
         title: str = Field(description="Chat title in 2–5 words based on the first prompt")
 
@@ -39,4 +38,23 @@ async def gen_chat_title(prompt: str) -> str:
     except Exception as e:
         print("❌ Error in gen_chat_title:")
         traceback.print_exc()
-        return "Error Occurred"
+
+        # Unwrap LangGraph-wrapped exceptions to get the real cause
+        cause  = getattr(e, "__cause__", None) or getattr(e, "__context__", None)
+        actual = cause if cause else e
+
+        error_code = None
+        if hasattr(actual, "response") and hasattr(actual.response, "status_code"):
+            error_code = actual.response.status_code
+        elif hasattr(actual, "status_code"):
+            error_code = actual.status_code
+        elif hasattr(actual, "code"):
+            error_code = actual.code
+        else:
+            error_code = type(actual).__name__
+
+        if error_code == 429:
+            print("❌ Rate limit hit during title generation")
+            return "Rate Limit Exceeded"
+
+        return "New Chat"

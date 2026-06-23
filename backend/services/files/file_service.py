@@ -65,10 +65,18 @@ async def store_file_doc(file_hash, file, path, user_id, needs_rag, char_count, 
         "embedding_status": "pending" if needs_rag else "not_needed",
         "created_at": datetime.now()
     }
-    await db.files.insert_one(file_doc)
-    _cache[file_hash] = text if not needs_rag else None  # cache non-RAG texts for quick retrieval
-
-
+    
+    result = await db.files.update_one(
+        {"file_hash": file_hash, "user_id": user_id},  # match condition
+        {"$setOnInsert": file_doc},                     # only write if NEW doc
+        upsert=True
+    )
+    
+    # Cache only if we actually inserted (not a race-condition duplicate)
+    if result.upserted_id:
+        _cache[file_hash] = text if not needs_rag else None
+    
+    return result.upserted_id is not None  # True = fresh insert, False = already existed
 
 
 

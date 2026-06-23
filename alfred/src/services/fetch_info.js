@@ -17,6 +17,7 @@ const REFRESH_BUFFER_MS = 60_000;
 // Every successful refresh, from ANY code path, goes through here so the
 // clock never drifts out of sync across the interceptor / proactive check / SSE recovery.
 export async function doRefresh() {
+  console.log("Refreshing access token...")
   await api.post('/refresh');
   lastRefreshTime = Date.now();
 }

@@ -19,7 +19,9 @@ export const usechatStore = create(
     tool_array: [],
     files_array: [],
     isStreaming: false,
-
+    // NEW: tracks whether we're currently fetching an existing chat's
+    // history (fillOldChat). Separate from isStreaming, which is about
+    // an active response being generated, not history being loaded.
     isLoadingChat: false,
     isChatLoaded: false,
     abortController: null,
@@ -127,6 +129,7 @@ export const usechatStore = create(
           state.curr_chatid = newId;
           state.new_created_chatId = newId;
           state.Curr_Conversation_array = [];
+          state.isChatLoaded = true; // A new chat has no history to load, so mark it loaded immediately
           state.isStreaming = false;
           // A brand-new chat has no history to load — mark it loaded
           // immediately so ChatContainer doesn't show a loader for it.
@@ -217,9 +220,12 @@ export const usechatStore = create(
         }
       },
 
-
+      // FIXED: now properly async (so callers can `await` it), uses the
+      // `chatid` parameter that's actually passed in instead of silently
+      // reading stale state, and tracks isLoadingChat/isChatLoaded so the
+      // UI can show a loader specifically for "fetching this chat's history."
       fillOldChat: async (chatid, router) => {
-    
+        // Already loaded this exact chat — don't refetch.
         if (get().isChatLoaded && get().curr_chatid === chatid) {
           console.log("chat already loaded.....");
           return;

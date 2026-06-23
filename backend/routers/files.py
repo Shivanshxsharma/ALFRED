@@ -68,7 +68,7 @@ async def upload_file(
         try:
             text = extract_text(tmp_path)
             char_count = len(text)
-            needs_rag = char_count > 20000
+            needs_rag = char_count > 1000
 
             # Upload to Cloudinary. resource_type="auto" lets Cloudinary
             # detect PDFs/docs correctly instead of assuming an image.

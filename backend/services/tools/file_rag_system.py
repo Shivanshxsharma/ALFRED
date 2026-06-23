@@ -54,15 +54,14 @@ async def read_file(query: str, file_hashes: list[str]) -> str:
         query:       focused search string matching what the user wants to find
         file_hashes: list of file hashes identifying which files to search
     """
-    print(f"[read_file] Called with query: {query[:50]} and file_hashes: {file_hashes}")
+    # print(f"[read_file] Called with query: {query[:50]} and file_hashes: {file_hashes}")
     chunks = await vector_search(query, file_hashes, top_k=5)
 
-    print (f"[read_file] Returning {len(chunks)} chunks as context.")
     if not chunks:
         return "No additional relevant content found in the uploaded files."
     
 
     return "\n\n".join(
-        f"[Chunk {c['chunk_index']}]\n{c['text']}"
+        f"-{c['text']}"
         for c in chunks
     )

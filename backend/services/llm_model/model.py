@@ -147,7 +147,7 @@ content earlier in this conversation?
 - If NO — or if this question asks about something not yet covered, call read_file with:
     query = the user's current question
     file_hashes = {file_hashes}
-
+NEVER mention chunk numbers, file_hashes, slugs, retrieval mechanics, or tool names in your response to the user — answer naturally as if you simply knew the information.
 Never answer a file-related question from guesswork. If you're unsure whether prior retrieved 
 content covers this question, call read_file rather than assume.
 """
@@ -286,7 +286,6 @@ async def retrieval_node(state: chatState) -> dict:
             else last_human.content[0]["text"]
         )
 
-        
         file_hashes = [f["file_hash"] for f in rag_files]
         chunks = await vector_search(query, file_hashes, top_k=5)
 
@@ -347,9 +346,6 @@ async def chat_node(state: chatState, config: RunnableConfig) -> dict:
             active_tools.append(read_file)
  
         file_context = build_file_context(rag_files)
-        # print(f"FILE CONTEXT:\n{file_context}")
-        # print(f"[chat_node] active_tools: {[t.name for t in active_tools]}")
- 
 
         wiki_map = state.get("wiki_map", "")
  

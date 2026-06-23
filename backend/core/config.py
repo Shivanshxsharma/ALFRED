@@ -23,11 +23,10 @@ def get_sync_client() -> pymongo.MongoClient:
     return sync_client
 
 async def connect_db() -> None:
-
     global client, db
 
     client = AsyncIOMotorClient(MONGO_URI)
-    db     = client[DATABASE_NAME]
+    db = client[DATABASE_NAME]
 
     await db.chats.create_index("userId")
     await db.messages.create_index("chatId")
@@ -35,10 +34,14 @@ async def connect_db() -> None:
     await db.wiki_pages.create_index("slug")
     await db.wiki_categories.create_index("userId")
     await db.file_chunks.create_index("file_hash")
-    await db.files.create_index("file_hash", unique=True)
+
+    await db.files.create_index(
+        [("file_hash", 1), ("user_id", 1)],
+        unique=True
+    )
+
     await client.admin.command("ping")
     print(f"[DB] Connected to MongoDB: {DATABASE_NAME}")
-
 
 async def close_db() -> None:
 

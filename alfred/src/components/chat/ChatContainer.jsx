@@ -36,8 +36,8 @@ const ChatContainer = () => {
   // there's nothing to fetch, so the chat-loaded check is skipped entirely.
   const isWaitingOnUser = isUserInfoLoading || !isUserInfoLoaded;
   const isWaitingOnChat = chatId ? (isLoadingChat || !isChatLoaded) : false;
-
-  if (isWaitingOnUser || isWaitingOnChat) {
+  console.log({ "IS_WAITING_ON_USER": isWaitingOnUser, "IS_WAITING_ON_CHAT": isWaitingOnChat, "IS_USER_INFO_LOADING": isUserInfoLoading, "IS_USER_INFO_LOADED": isUserInfoLoaded, "IS_LOADING_CHAT": isLoadingChat, "IS_CHAT_LOADED": isChatLoaded });
+  if ( isWaitingOnChat) {
     return <Skeleton />;
   }
 
