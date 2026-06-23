@@ -30,8 +30,11 @@ async def gen_chat_title(prompt: str) -> str:
             f"Generate a short chat title in 2-5 words based on this first user prompt.\n\nPrompt: {prompt}"
         )
 
+        print(result)
+
         if not result or not result.title:
             raise ValueError("Empty title generated")
+        
 
         return result.title.strip('"')
 
