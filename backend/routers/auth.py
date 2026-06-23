@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, Request
-
+import os
 from ..models.models import authenticate_User, create_User, OAuthCallbackRequest
 from ..core.config import get_db
 from ..services.auth.authentication import (
@@ -15,11 +15,13 @@ router = APIRouter(tags=["auth"])
 def _set_auth_cookies(res: Response, refresh_token: str, access_token: str):
     res.set_cookie(
         key="rt", value=refresh_token, httponly=True,
-        secure=True, samesite="none", max_age=7 * 24 * 60 * 60, path='/'
+        secure=True, samesite="none", max_age=7 * 24 * 60 * 60, path='/',
+        domain=os.getenv("FRONTEND_URL")
     )
     res.set_cookie(
         key="at", value=access_token, httponly=False,
-        secure=True, samesite="none", max_age=15 * 60, path='/'
+        secure=True, samesite="none", max_age=15 * 60, path='/',
+        domain=os.getenv("FRONTEND_URL")
     )
 
 # backend/routers/auth.py — update each route
