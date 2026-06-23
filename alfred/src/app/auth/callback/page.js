@@ -24,7 +24,7 @@ export default function CallbackPage() {
     }
 
         
-    const response = await axios.post('http://localhost:8000/google-auth', { "code": code,"provider": "google" },
+    const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/google-auth`, { "code": code,"provider": "google" },
       {
       withCredentials: true
     })

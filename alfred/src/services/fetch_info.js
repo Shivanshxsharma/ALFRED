@@ -144,7 +144,7 @@ export async function fireSessionEnd(chatId) {
 export function fireSessionEndBeacon(chatId) {
   if (!chatId) return;
   navigator.sendBeacon(
-    `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/session-end/${chatId}`
+    `${process.env.NEXT_PUBLIC_BACKEND_URL }/session-end/${chatId}`
   );
 }
 
