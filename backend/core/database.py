@@ -136,12 +136,12 @@ async def getUserInfo(userid: str, db, pg_db):
 
 
 
-async def getChatHistory(userid,page,page_size,db):
+async def getChatHistory(userid, skip, page_size, db):
     try:
-        hist=await db[collections.CHATS].find(
+        hist = await db[collections.CHATS].find(
             {"userId": userid},
-            {"_id": 0,   "chatId": 1, "title": 1, "updated_at": 1}
-        ).sort("updated_at", -1).skip(page * page_size).limit(page_size).to_list(None)
+            {"_id": 0, "chatId": 1, "title": 1, "updated_at": 1}
+        ).sort("updated_at", -1).skip(skip).limit(page_size).to_list(None)
         return {
             "items": hist,
             "hasMore": len(hist) == page_size
@@ -153,7 +153,6 @@ async def getChatHistory(userid,page,page_size,db):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error during getting data: {e}"
         )
-    
 
 
 

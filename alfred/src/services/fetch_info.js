@@ -75,16 +75,15 @@ export async function fetchUserInfo() {
 }
 
 
-export async function fetchuserHistory(page, PAGE_SIZE) {
+export async function fetchuserHistory(skip, pageSize) {
   try {
-    const response = await api.get(`/getChatHistory?page=${page}&size=${PAGE_SIZE}`);
-    return response.data; 
+    const response = await api.get(`/getChatHistory?skip=${skip}&size=${pageSize}`);
+    return response.data;
   } catch (error) {
     console.error('Failed to fetch chat history:', error);
     throw error;
   }
 }
-
 
 export async function fetchOldMessages(chatId) {
   try {

@@ -1,6 +1,6 @@
 "use client"
 import Link from "next/link";
-import { Calendar, Home, Inbox, Search, ChevronDown, Settings, History, Pen } from "lucide-react";
+import { Calendar, Home, Inbox, Search, ChevronDown, Settings,History, Pen } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -15,176 +15,193 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
-import {
+import{
   Collapsible,
   CollapsibleTrigger,
   CollapsibleContent
-} from "@/components/ui/collapsible";
+}from "@/components/ui/collapsible";
+
+// wudcb
+
 
 import { usechatStore, user_contextStore } from "@/services/contextStrore";
 import { useShallow } from "zustand/react/shallow";
+import { shallow } from 'zustand/shallow';
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { fetchuserHistory, fireSessionEnd } from "@/services/fetch_info";
+
+import { fetchuserHistory , fireSessionEnd } from "@/services/fetch_info";
+import { useParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import AccountDropdown from "./AccountDropdown";
+import  AccountDropdown  from "./AccountDropdown";
+
+
+
+
+
+
+
+
+
+
 
 const PAGE_SIZE = 10;
 
+
+
 export function AppSidebar() {
 
-  const first_name = user_contextStore(useShallow((state) => state.first_name));
-  const last_name = user_contextStore(useShallow((state) => state.last_name));
-  const email = user_contextStore(useShallow((state) => state.email));
-  const initialHistory = user_contextStore(useShallow((state) => state.chat_titles));
-  const updateHistory = user_contextStore(useShallow((state) => state.updateHistory));
+// Separate selectors
+const first_name = user_contextStore(useShallow((state) => state.first_name));
+const last_name = user_contextStore(useShallow((state) => state.last_name));
+const email = user_contextStore(useShallow((state) => state.email));
+const initialHistory = user_contextStore(useShallow((state) => state.chat_titles));
+const updateHistory  = user_contextStore(useShallow((state) => state.updateHistory));
 
-  const setcurr_chatid = usechatStore(useShallow((state) => state.actions.setcurr_chatid));
-  const curr_chatid = usechatStore(useShallow((state) => state.curr_chatid));
 
-  const [history, setHistory] = useState([]);
-  const [page, setPage] = useState(1.5);
-  const [hasMore, setHasMore] = useState(true);
-  const [loading, setLoading] = useState(false);
+const setcurr_chatid = usechatStore(useShallow((state) => state.actions.setcurr_chatid)); 
+const curr_chatid = usechatStore(useShallow((state) => state.curr_chatid));
 
-  // Tracks whether we've completed at least one fetch — used to decide
-  // whether to show the skeleton at all. We never want to flash a
-  // skeleton while we're still figuring out if pagination is even
-  // relevant (i.e. on the very first page load).
-  const hasFetchedOnce = useRef(false);
-  const seededFromInitial = useRef(false);
+const [history, setHistory]     = useState([]); // local state for chat history
+  const [offset, setOffset]       = useState(0);           // next offset to fetch
+  const [hasMore, setHasMore]     = useState(true);
+  const [loading, setLoading]     = useState(false);
+const router = useRouter();
+  
+  
+const sentinelRef = useRef(null);
 
-  const router = useRouter();
-  const sentinelRef = useRef(null);
+const seededFromInitial = useRef(false);
 
-  const fetchHistory = useCallback(async (pageToFetch) => {
-    if (loading || !hasMore) return;
+const fetchHistory = useCallback(async (skipAmount) => {
+  if (loading || !hasMore) return;
 
-    setLoading(true);
+  setLoading(true);
 
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    const data = await fetchuserHistory(skipAmount, PAGE_SIZE);
+
+    setHistory((prev) => {
+      const ids = new Set(prev.map((c) => c.chatId));
+      return [...prev, ...data.items.filter((c) => !ids.has(c.chatId))];
+    });
+
+    setHasMore(data.hasMore);
+    setOffset((prev) => prev + PAGE_SIZE);
+
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+}, [loading, hasMore]);
+
+
+useEffect(() => {
+  if (!seededFromInitial.current && initialHistory && initialHistory.length > 0 && history.length === 0) {
+    seededFromInitial.current = true;
+    setHistory(initialHistory);
+    setOffset(initialHistory.length); 
+  }
+}, [initialHistory, history.length]);
+
+
+useEffect(() => {
+  const sentinel = sentinelRef.current;
+  if (!sentinel) return;
+  const observer = new IntersectionObserver(
+    ([entry]) => {
+      if (entry.isIntersecting) {
+        fetchHistory(offset);
+      }
+    },
+    { root: null, threshold: 0.1 }
+  );
+  observer.observe(sentinel);
+  return () => observer.disconnect();
+}, [fetchHistory, offset]);
+
+
+const handleNewChat = (curr_chatid) => {
+  console.log("New chat initiated. Ending session for chatId:", curr_chatid);
+  const oldChatId = curr_chatid;  
+
+  fireSessionEnd(oldChatId)   
+
+}
+
+ 
+
+const items = [
+  { title: "New chat", url: "/chats", icon: Pen , handler: handleNewChat},
+
+];
+
+
+
+
+
+
+
+
+useEffect(() => {
+  const loadNewChat = async () => {
+    if (!updateHistory) return;  
     try {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      const data = await fetchuserHistory(pageToFetch * PAGE_SIZE, PAGE_SIZE);
-
+      const data = await fetchuserHistory(0, 2);
       setHistory((prev) => {
         const ids = new Set(prev.map((c) => c.chatId));
-        return [...prev, ...data.items.filter((c) => !ids.has(c.chatId))];
+        return [
+          ...data.items.filter((c) => !ids.has(c.chatId)),
+          ...prev,
+        ];
       });
-
-      setHasMore(data.hasMore);
-      setPage((p) => p + 1);
     } catch (err) {
       console.error(err);
     } finally {
-      hasFetchedOnce.current = true;
-      setLoading(false);
+      user_contextStore.getState().actions.setUpdateHistory(false); 
     }
-  }, [loading, hasMore]);
-
-  // Seed history from initialHistory as soon as it's available. This is
-  // now a plain mount-time effect, fully decoupled from the
-  // IntersectionObserver below. On mobile, the sidebar renders inside a
-  // shadcn Sheet that stays unmounted/hidden until opened, so the
-  // sentinel never gets a layout pass and the observer below may never
-  // fire on first load — seeding here means the list still populates
-  // correctly even if that never happens.
-  useEffect(() => {
-    if (!seededFromInitial.current && initialHistory && initialHistory.length > 0 && history.length === 0) {
-      seededFromInitial.current = true;
-      setHistory(initialHistory);
-      // If the initial seed already tells us there's nothing more to
-      // load (fewer than a full page), treat that as having "fetched
-      // once" so we never show a skeleton for a short list.
-      if (initialHistory.length < PAGE_SIZE) {
-        setHasMore(false);
-      }
-      hasFetchedOnce.current = true;
-    }
-  }, [initialHistory, history.length]);
-
-  // Observer is ONLY responsible for triggering paginated fetch-more as
-  // the sentinel scrolls into view. It no longer owns initial seeding,
-  // so it's safe for this to attach late (e.g. once the mobile Sheet
-  // opens and the sentinel actually mounts).
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          fetchHistory(page);
-        }
-      },
-      { root: null, threshold: 0.1 }
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [fetchHistory, page, history.length]);
-
-  const handleNewChat = (curr_chatid) => {
-    console.log("New chat initiated. Ending session for chatId:", curr_chatid);
-    const oldChatId = curr_chatid;
-    fireSessionEnd(oldChatId);
   };
+  loadNewChat();
+}, [updateHistory]);
 
-  const items = [
-    { title: "New chat", url: "/chats", icon: Pen, handler: handleNewChat },
-  ];
 
-  // Update history on new chat addition
-  useEffect(() => {
-    const loadNewChat = async () => {
-      if (!updateHistory) return;
-      try {
-        const data = await fetchuserHistory(0, 2);
-        setHistory((prev) => {
-          const ids = new Set(prev.map((c) => c.chatId));
-          return [
-            ...data.items.filter((c) => !ids.has(c.chatId)),
-            ...prev,
-          ];
-        });
-      } catch (err) {
-        console.error(err);
-      } finally {
-        user_contextStore.getState().actions.setUpdateHistory(false);
-      }
-    };
-    loadNewChat();
-  }, [updateHistory]);
 
-  // Only show the skeleton once we've already established (via a
-  // completed fetch) that there's more to load. Never show it on the
-  // very first determination, and never show it once we know the full
-  // list is under PAGE_SIZE * 1.5 (i.e. effectively "short").
-  const showLoadingSkeleton = loading && hasFetchedOnce.current && hasMore;
+
+
+
+
+
+
+
+
 
   return (
-    <Sidebar collapsible="icon" variant="floating">
+    <Sidebar  collapsible="icon" variant="floating">
       <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <AccountDropdown
-              trigger={
-                <SidebarMenuButton size="lg" asChild={false}>
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg border-2 border-violet-700/30 bg-violet-900/50 text-sidebar-primary-foreground">
-                    <span className="text-lg font-bold">{first_name.charAt(0).toUpperCase()}</span>
-                  </div>
-                  <div className="flex flex-col gap-0.5 leading-none">
-                    <span className="font-semibold">{first_name + " " + last_name}</span>
-                    <span className="text-xs">{email}</span>
-                  </div>
-                </SidebarMenuButton>
-              }
-            />
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
+  <SidebarMenu>
+    <SidebarMenuItem>
+      <AccountDropdown
+        trigger={
+          <SidebarMenuButton size="lg" asChild={false}>
+            <div className="flex aspect-square size-8 items-center justify-center rounded-lg border-2 border-violet-700/30 bg-violet-900/50 text-sidebar-primary-foreground">
+              <span className="text-lg font-bold">{first_name.charAt(0).toUpperCase()}</span>
+            </div>
+            <div className="flex flex-col gap-0.5 leading-none">
+              <span className="font-semibold">{first_name + " " + last_name}</span>
+              <span className="text-xs">{email}</span>
+            </div>
+          </SidebarMenuButton>
+        }
+      />
+    </SidebarMenuItem>
+  </SidebarMenu>
+</SidebarHeader>
 
-      <SidebarContent>
-        <SidebarGroup className="flex-none border-t">
+      <SidebarContent >
+        <SidebarGroup className="flex-none border-t" >
           <SidebarGroupLabel>Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -202,66 +219,75 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup className="flex-1 min-h-0 border-t">
-          <SidebarGroupLabel>Chat History</SidebarGroupLabel>
-          <SidebarGroupContent className="h-full overflow-y-auto max-h-[calc(100vh-200px)]">
-            <Collapsible defaultOpen className="group/collapsible">
-              <CollapsibleTrigger className="group-data-[state=collapsed]:hidden mb-2 flex group items-center justify-between w-50 px-2 py-1 rounded-md bg-transparent hover:bg-zinc-700 dark:hover:bg-zinc-700 data-[state=open]:bg-zinc-800 dark:data-[state=open]:bg-zinc-700">
+
+
+
+
+
+
+        
+        <SidebarGroup  className="flex-1 min-h-0 border-t ">
+          <SidebarGroupLabel >Chat History</SidebarGroupLabel>
+          <SidebarGroupContent className=" h-full overflow-y-auto max-h-[calc(100vh-200px)]   " >
+           <Collapsible defaultOpen className="group/collapsible">
+               <CollapsibleTrigger  className="group-data-[state=collapsed]:hidden  mb-2 flex group items-center justify-between w-50 px-2 py-1 rounded-md bg-transparent hover:bg-zinc-700 dark:hover:bg-zinc-700 data-[state=open]:bg-zinc-800 dark:data-[state=open]:bg-zinc-700">
                 <span>Previous chats</span>
                 <ChevronDown className="transition-transform w-4 h-4 duration-200 group-data-[state=closed]:rotate-270" />
               </CollapsibleTrigger>
-              <CollapsibleContent>
-                <SidebarMenu>
+             <CollapsibleContent>
+  <SidebarMenu>
 
-                  {history.map((item) => (
-                    <SidebarMenuSubItem key={item.chatId}>
-                      <SidebarMenuSubButton
-                        asChild
-                        className={
-                          curr_chatid === item.chatId && curr_chatid !== null
-                            ? "h-10 w-[98%] border border-violet-700 bg-violet-700/30 dark:bg-violet-700/30"
-                            : "h-10 bg-transparent w-[98%]"
-                        }
-                      >
-                        <Link
-                          href={`/chats/${item.chatId}`}
-                          className="flex items-center gap-2 w-[98%] ml-[1%]"
-                        >
-                          {item.title}
-                        </Link>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                  ))}
+    {/* History items — NO wrapping SidebarMenuItem */}
+    {history.map((item) => (
+      <SidebarMenuSubItem key={item.chatId}>
+        <SidebarMenuSubButton
+          asChild
+          className={
+            curr_chatid === item.chatId && curr_chatid !== null
+              ? "h-10 w-[98%] border border-violet-700 bg-violet-700/30 dark:bg-violet-700/30"
+              : "h-10 bg-transparent w-[98%]"
+          }
+        >
+<Link
+  href={`/chats/${item.chatId}`}
+  className="flex items-center gap-2 w-[98%] ml-[1%]"
+>
+  {item.title}
+</Link>
+        </SidebarMenuSubButton>
+      </SidebarMenuSubItem>
+    ))}
 
-                  {/* Loading skeleton — only for genuine pagination fetches,
-                      never on the initial load, and never once we know the
-                      list is short (hasMore === false) */}
-                  {showLoadingSkeleton && (
-                    <>
-                      {[1, 2, 3].map((i) => (
-                        <SidebarMenuSubItem key={`skeleton-${i}`} className="w-full animate-pulse group-data-[state=collapsed]:hidden">
-                          <div className="h-10 w-full rounded-md bg-zinc-300 dark:bg-zinc-700" />
-                        </SidebarMenuSubItem>
-                      ))}
-                    </>
-                  )}
+    {/* Loading skeleton — use SidebarMenuSubItem directly, no SidebarMenuItem wrapper */}
+    {loading && (
+      <>
+        {[1, 2, 3].map((i) => (
+          <SidebarMenuSubItem key={`skeleton-${i}`} className="w-full animate-pulse group-data-[state=collapsed]:hidden">
+            <div className="h-10 w-full rounded-md bg-zinc-300 dark:bg-zinc-700" />
+          </SidebarMenuSubItem>
+        ))}
+      </>
+    )}
 
-                  {!hasMore && history.length > 0 && (
-                    <div className="w-full flex justify-center text-xs text-zinc-400 py-1 group-data-[state=collapsed]:hidden">
-                      no more chats
-                    </div>
-                  )}
+    {/* No more chats indicator */}
+    {!hasMore && (
+      <div className="w-full flex justify-center text-xs text-zinc-400 py-1 group-data-[state=collapsed]:hidden">
+        no more chats
+      </div>
+    )}
 
-                  {/* Sentinel only needs to exist while there's more to fetch */}
-                  {hasMore && (
-                    <div ref={sentinelRef} className="h-1 w-full bg-transparent group-data-[state=collapsed]:hidden" />
-                  )}
+    {/* Sentinel */}
+    <div ref={sentinelRef} className="h-1 w-full bg-transparent group-data-[state=collapsed]:hidden" />
 
-                </SidebarMenu>
-              </CollapsibleContent>
+  </SidebarMenu>
+</CollapsibleContent>
             </Collapsible>
           </SidebarGroupContent>
         </SidebarGroup>
+
+
+
+
 
       </SidebarContent>
     </Sidebar>
