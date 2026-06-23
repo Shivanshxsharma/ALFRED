@@ -1,17 +1,21 @@
 'use client'
 import axios from 'axios'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import AlfredLoader from '@/components/feedback/AlfredLoader'
 
 export default function CallbackPage() {
   const router = useRouter()
+  const hasFired = useRef(false)
 
   useEffect(() => {
+    if (hasFired.current) return
+    hasFired.current = true
+
     const handleGoogleAuth = async () => {
       try {
         const params = new URLSearchParams(window.location.search)
-        const code  = params.get('code')
+        const code = params.get('code')
         const state = params.get('state')
 
         if (state !== sessionStorage.getItem('oauth_state')) {
@@ -26,10 +30,11 @@ export default function CallbackPage() {
           return
         }
 
-        // ✅ try/catch wraps the actual request
+        sessionStorage.removeItem('oauth_state') // single-use, clean up regardless of outcome
+
         const response = await axios.post(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/google-auth`,
-          { code, provider: "google" },
+          { code, provider: 'google' },
           { withCredentials: true }
         )
 
@@ -39,9 +44,7 @@ export default function CallbackPage() {
           console.error('Authentication failed:', response.data)
           router.push('/auth')
         }
-
       } catch (error) {
-        // ✅ now actually catches axios errors too
         console.error('Error during Google authentication:', error.response?.data || error)
         router.push('/auth')
       }
