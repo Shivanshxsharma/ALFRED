@@ -26,7 +26,7 @@ function _doUpload(file, onProgress, isRetry) {
         // Token expired mid-upload — refresh and retry once
         try {
           await doRefresh()
-          const result = await _doUpload(file, onProgress, isRetry=true)
+          const result = await _doUpload(file, onProgress, true)
           resolve(result)
         } catch {
           reject(new Error("Session expired — please log in again"))
