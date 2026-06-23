@@ -225,34 +225,37 @@ export const usechatStore = create(
       // reading stale state, and tracks isLoadingChat/isChatLoaded so the
       // UI can show a loader specifically for "fetching this chat's history."
       fillOldChat: async (chatid, router) => {
-        // Already loaded this exact chat — don't refetch.
-        if (get().isChatLoaded && get().curr_chatid === chatid) {
-          console.log("chat already loaded.....");
-          return;
-        }
+  const prevChatId = get().curr_chatid;
+  const alreadyLoaded = get().isChatLoaded && prevChatId === chatid;
 
-        set((state) => {
-          state.isLoadingChat = true;
-          state.isChatLoaded = false;
-        });
+  if (alreadyLoaded) {
+    console.log("chat already loaded.....");
+    return;
+  }
 
-        try {
-          const messages = await fetchOldMessages(chatid);
-          set((state) => {
-            state.Curr_Conversation_array = messages;
-            state.isLoadingChat = false;
-            state.isChatLoaded = true;
-          });
-        } catch (error) {
-          console.error("Failed to fetch old messages:", error);
-          set((state) => {
-            state.isLoadingChat = false;
-            state.isChatLoaded = false;
-          });
-          get().actions.showError("Failed to load chat history");
-          router.push('/chats');
-        }
-      },
+  set((state) => {
+    state.curr_chatid = chatid;
+    state.isLoadingChat = true;
+    state.isChatLoaded = false;
+  });
+
+  try {
+    const messages = await fetchOldMessages(chatid);
+    set((state) => {
+      state.Curr_Conversation_array = messages;
+      state.isLoadingChat = false;
+      state.isChatLoaded = true;
+    });
+  } catch (error) {
+    console.error("Failed to fetch old messages:", error);
+    set((state) => {
+      state.isLoadingChat = false;
+      state.isChatLoaded = false;
+    });
+    get().actions.showError("Failed to load chat history");
+    router.push('/chats');
+  }
+},
 
       stopStreaming: async () => {
         const { abortController, curr_chatid } = get();

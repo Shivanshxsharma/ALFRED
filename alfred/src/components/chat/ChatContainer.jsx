@@ -23,13 +23,14 @@ const ChatContainer = () => {
   const isLoadingChat = usechatStore(useShallow((state) => state.isLoadingChat));
   const isChatLoaded = usechatStore(useShallow((state) => state.isChatLoaded));
 
-  useEffect(() => {
-    usechatStore.getState().actions.setcurr_chatid(chatId);
-    user_contextStore.getState().actions.fetchUserInfo(router);
-    if (chatId) {
-      usechatStore.getState().actions.fillOldChat(chatId, router);
-    }
-  }, [chatId]);
+useEffect(() => {
+  user_contextStore.getState().actions.fetchUserInfo(router);
+  if (chatId) {
+    usechatStore.getState().actions.fillOldChat(chatId, router);
+  } else {
+    usechatStore.getState().actions.setcurr_chatid(null);
+  }
+}, [chatId]);
 
   // Only wait on chat-history loading if there IS a chatId (i.e. we're on
   // /chats/[chatId], an existing conversation). On /chats with no ID,
