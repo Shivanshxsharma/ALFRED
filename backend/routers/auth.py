@@ -118,7 +118,10 @@ async def guest_endpoint(res: Response):
         "userid": guest_id,
         "email": None,
         "is_guest": True,
-    }, expires_delta=timedelta(minutes=30))  # see note below on create_token signature
+    }, expires_delta=timedelta(minutes=30))
+
+    res.delete_cookie("rt", path="/")
+    res.delete_cookie("at", path="/")
 
     res.set_cookie(
         key="at", value=access_token, httponly=False,

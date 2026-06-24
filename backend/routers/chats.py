@@ -39,6 +39,7 @@ async def new_chat(req: new_Chat, db=Depends(get_db), user: dict = Depends(get_c
 @router.get("/getChatHistory")
 async def get_chat_history(req: Request, skip: int, size: int, db=Depends(get_db), user: dict = Depends(get_current_user)):
     try:
+        print(f"Fetching chat history for user: {user}")
         if user.get("is_guest", False):
             return {"items": [], "has_more": False}
         return await getChatHistory(userid=user["userid"], skip=skip, page_size=size, db=db)
