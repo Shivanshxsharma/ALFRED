@@ -23,6 +23,7 @@ async def build_model_client(
         raise ValueError(f"Unknown model: {model_id}")
 
     if is_guest:
+        print(f"Guest user requested model: {model_id}")
         if model_id not in GUEST_ALLOWED_MODELS:
             model_id = "gemini-2.5-flash"  # silently fall back instead of erroring on a recruiter
 

@@ -385,7 +385,6 @@ async def chat_node(state: chatState, config: RunnableConfig) -> dict:
             llm = llm.bind_tools(active_tools)
  
         response = await llm.ainvoke(final_messages)
-        print(f"CHAT NODE RESPONSE: {response}")
 
         response = normalize_ai_message(response)
  
@@ -481,8 +480,6 @@ async def stream_response(
     model_id = metadata.model_id if metadata and metadata.model_id else "gemini-2.5-flash"
 
     if is_guest:
-        
-        model_id = "gemini-2.5-flash"  #
         toggled_tools = {
             "reading_files_enabled": False,
             "remembring_enabled":    False,
