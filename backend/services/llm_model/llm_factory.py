@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 GUEST_ALLOWED_MODELS = {
     "gemini-2.5-flash": os.getenv("GUEST_DEMO_API_KEY_GEMINI"),     # adjust to your actual model_id strings
-    "glm-4.6": os.getenv("GUEST_DEMO_API_KEY_GLM"),               # or whatever exact id your model_registry uses
+    "zai-glm-4.7": os.getenv("GUEST_DEMO_API_KEY_GLM"),               # or whatever exact id your model_registry uses
     "gpt-oss-120b": os.getenv("GUEST_DEMO_API_KEY_GPT"),          # same — match your registry's id, not the display name
 }
 
