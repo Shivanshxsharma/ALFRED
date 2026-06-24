@@ -165,7 +165,7 @@ export function ModelPicker() {
         </div>
       )}
 
-      {/* Trigger — Fixed button mechanics */}
+      {/* Trigger — always expanded now */}
       <button
         ref={triggerRef}
         aria-label="Select model"
@@ -177,7 +177,7 @@ export function ModelPicker() {
         onMouseUp={() => setActive(false)}
         onClick={() => setOpen((o) => !o)}
         style={{
-          width: hovered ? `${EXPANDED}px` : `${SIZE}px`,
+          width: `${EXPANDED}px`,
           height: `${SIZE}px`,
           transform: active ? "translate(2px, 2px)" : "none",
           flexShrink: 0,
@@ -191,7 +191,6 @@ export function ModelPicker() {
           "transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
         )}
       >
-        {/* Icon container — fixed width, centered content */}
         <span
           style={{
             width: `${SIZE}px`,
@@ -207,14 +206,12 @@ export function ModelPicker() {
           <Cpu size={SIZE * 0.5} strokeWidth={2} />
         </span>
 
-        {/* Label — fixed animation timing */}
         <span
           style={{
-            maxWidth: hovered ? `${EXPANDED - SIZE - TEXT_PAD}px` : "0px",
-            opacity: hovered ? 1 : 0,
-            paddingRight: hovered ? `${TEXT_PAD}px` : "0px",
+            maxWidth: `${EXPANDED - SIZE - TEXT_PAD}px`,
+            opacity: 1,
+            paddingRight: `${TEXT_PAD}px`,
             fontSize: "13px",
-            transition: "opacity 0.3s ease-[cubic-bezier(0.4,0,0.2,1)], max-width 0.3s ease-[cubic-bezier(0.4,0,0.2,1)], padding 0.3s ease-[cubic-bezier(0.4,0,0.2,1)]",
           }}
           className="text-violet-100 font-medium whitespace-nowrap select-none tracking-wide overflow-hidden truncate"
         >

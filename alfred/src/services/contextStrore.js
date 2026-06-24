@@ -305,7 +305,7 @@ export const user_contextStore = create(immer((set, get) => ({
   isLoading: false,
   is_user_info_loaded: false,
   loadError: null,
-
+  is_guest: false,
   actions: {
     setUpdateHistory: (val) => set((state) => {
       state.updateHistory = val;
@@ -321,6 +321,7 @@ export const user_contextStore = create(immer((set, get) => ({
         state.connected_models = user_data.connected_models || {};
         state.is_user_info_loaded = true;
         state.isLoading = false;
+        state.is_guest = user_data.is_guest || false;
         state.loadError = null;
       });
     },

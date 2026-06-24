@@ -4,6 +4,7 @@ import json
 from logging import config
 from multiprocessing import process
 import operator
+import os
 import traceback
 from datetime import datetime
 from dotenv import load_dotenv
@@ -52,8 +53,19 @@ def get_tool_display_name(tool_name: str) -> str:
 # Prompts
 # ---------------------------------------------------------------------------
 
-def get_system_prompt() -> str:
+def get_system_prompt(is_guest: bool) -> str:
     current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    if is_guest:
+        base = f"""You are Alfred, a helpful personal assistant.
+Current date and time: {current_datetime}
+You are in guest demo mode — 
+
+You have only web search and a limited set of models available. You do not have memory, file access int this mode:
+You do not have memory, file access int this mode:
+"""
+
+
     base = f"""You are Alfred, a helpful personal assistant.
 Current date and time: {current_datetime}
 PERSONA OVERRIDE (CRITICAL):
@@ -194,6 +206,7 @@ class chatState(TypedDict):
     injected_file_text: str
     pre_rag_files: Annotated[list[persisted_file], operator.add]
     wiki_map: str
+    is_guest: bool
 
 
 # ---------------------------------------------------------------------------
@@ -331,6 +344,7 @@ async def chat_node(state: chatState, config: RunnableConfig) -> dict:
         injected_file_text = state.get("injected_file_text", "")
         rag_files          = state.get("pre_rag_files", [])
  
+        is_guest = state.get("is_guest", False)
         TOOL_MAP = {
             "web_search_enabled":    search_tool,
             "reading_files_enabled": read_file,
@@ -341,6 +355,8 @@ async def chat_node(state: chatState, config: RunnableConfig) -> dict:
             for key, enabled in tools_state.items()
             if enabled and key in TOOL_MAP
         ]
+
+        
  
         if rag_files and read_file not in active_tools:
             active_tools.append(read_file)
@@ -355,9 +371,10 @@ async def chat_node(state: chatState, config: RunnableConfig) -> dict:
             injected_file_text=injected_file_text,
             images_uploaded=images_uploaded,
         )
- 
+
+        
         full_system_prompt = (
-            get_system_prompt() + file_context + image_context + "\n\n" + wiki_map
+            get_system_prompt(is_guest) + ((file_context + image_context + "\n\n" + wiki_map) if is_guest else "")
         )
         final_messages[0] = SystemMessage(content=full_system_prompt)
  
@@ -367,7 +384,7 @@ async def chat_node(state: chatState, config: RunnableConfig) -> dict:
             llm = llm.bind_tools(active_tools)
  
         response = await llm.ainvoke(final_messages)
- 
+        print(f"CHAT NODE RESPONSE: {response}")
 
         response = normalize_ai_message(response)
  
@@ -447,20 +464,32 @@ async def stream_response(
     prompt: str,
     chatId: str,
     db,
-    pg_db:AsyncSession,
+    pg_db: AsyncSession,
     metadata,
     cancel_event: asyncio.Event,
     user_id: str,
+    is_guest: bool = False,
 ):
     toggled_tools: tool_enabled = (
         metadata.toggled_tools if metadata and metadata.toggled_tools else {}
     )
+
     files_uploaded  = metadata.files_uploaded  if metadata and metadata.files_uploaded  else []
     images_uploaded = metadata.images_uploaded if metadata and metadata.images_uploaded else []
+
     model_id = metadata.model_id if metadata and metadata.model_id else "gemini-2.5-flash"
 
-
-    toggled_tools = {**toggled_tools, "reading_files_enabled": True, "remembring_enabled": True}  
+    if is_guest:
+        
+        model_id = "gemini-2.5-flash"  #
+        toggled_tools = {
+            "reading_files_enabled": False,
+            "remembring_enabled":    False,
+            "web_search_enabled":    True,
+        }
+        files_uploaded = []
+    else:
+        toggled_tools = {**toggled_tools, "reading_files_enabled": True, "remembring_enabled": True}
 
     input_state = {
         "messages":       [HumanMessage(content=prompt)],
@@ -473,13 +502,17 @@ async def stream_response(
     finalres = ""
     tool_data = ToolCallData()
     model_metadata: Message_data = Message_data(model_id=model_id)
-    llm=await build_model_client(pg_db, user_id, model_id)
-    CONFIG   = {"configurable": {"thread_id": chatId, "user_id": user_id   , "model": llm}}
+
+    if is_guest:
+       llm = await build_model_client(pg_db, user_id, model_id, is_guest=True)
+    else:
+        llm = await build_model_client(pg_db, user_id, model_id, is_guest=False)
+
+    CONFIG = {"configurable": {"thread_id": chatId, "user_id": user_id, "model": llm}}
 
     try:
         async for event in model.astream_events(input_state, config=CONFIG, version="v2"):
 
-            # Check abort at the top of every iteration
             if cancel_event.is_set():
                 yield f"data: {json.dumps({'type': 'aborted'})}\n\n"
                 break
@@ -509,8 +542,7 @@ async def stream_response(
                     finalres += content
                     yield f"data: {json.dumps({'type': 'stream', 'role': 'ai', 'content': content})}\n\n"
 
-        # Save to DB only when we actually got a response
-        if finalres:
+        if finalres and not is_guest:
             await add_to_Db(
                 False, None, chatId,
                 {
@@ -528,7 +560,6 @@ async def stream_response(
         print("❌ Error in stream_response:")
         traceback.print_exc()
 
-        # Unwrap LangGraph-wrapped exceptions to get the real cause
         cause  = getattr(e, "__cause__", None) or getattr(e, "__context__", None)
         actual = cause if cause else e
 
@@ -548,8 +579,7 @@ async def stream_response(
             else str(actual)
         )
 
-        # Save partial response if we got anything before the error
-        if finalres:
+        if finalres and not is_guest:
             try:
                 await add_to_Db(
                     False, None, chatId,

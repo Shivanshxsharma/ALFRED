@@ -22,6 +22,8 @@ const ChatContainer = () => {
   const isUserInfoLoaded = user_contextStore(useShallow((state) => state.is_user_info_loaded));
   const isLoadingChat = usechatStore(useShallow((state) => state.isLoadingChat));
   const isChatLoaded = usechatStore(useShallow((state) => state.isChatLoaded));
+  const isGuest = user_contextStore(useShallow((state) => state.is_guest));
+  const firstName = user_contextStore(useShallow((state) => state.first_name));
 
 useEffect(() => {
   user_contextStore.getState().actions.fetchUserInfo(router);
@@ -32,18 +34,14 @@ useEffect(() => {
   }
 }, [chatId]);
 
-  // Only wait on chat-history loading if there IS a chatId (i.e. we're on
-  // /chats/[chatId], an existing conversation). On /chats with no ID,
-  // there's nothing to fetch, so the chat-loaded check is skipped entirely.
   const isWaitingOnUser = isUserInfoLoading || !isUserInfoLoaded;
   const isWaitingOnChat = chatId ? (isLoadingChat || !isChatLoaded) : false;
-  console.log({ "IS_WAITING_ON_USER": isWaitingOnUser, "IS_WAITING_ON_CHAT": isWaitingOnChat, "IS_USER_INFO_LOADING": isUserInfoLoading, "IS_USER_INFO_LOADED": isUserInfoLoaded, "IS_LOADING_CHAT": isLoadingChat, "IS_CHAT_LOADED": isChatLoaded });
   if ( isWaitingOnChat) {
     return <Skeleton />;
   }
 
   return (
-    <DragDropZone>
+    <DragDropZone guestMode={isGuest}>
       {/* <ErrorBanner message={error} /> */}
       <div className='w-full h-full  absolute  right-0 top-0'>
         <div className='mt-3 ml-2 absolute z-2  '>
@@ -51,7 +49,7 @@ useEffect(() => {
         </div>
 
         <div className='w-[99%] h-[83%]  absolute flex justify-center  right-0 top-0 z-1'>
-          <Current_chat router={router} />
+          <Current_chat router={router} isGuest={isGuest} firstName={firstName} />
         </div>
 
         <div className='w-full flex justify-center  min-h-[15%]   absolute  bottom-6 left-0 right-0'>

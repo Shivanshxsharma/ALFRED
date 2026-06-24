@@ -251,7 +251,6 @@ def verify_token(token: str):
 
     # Create JWT Token ----------------------------------------------------------------------------------------
 def create_token(data: dict, expires_delta: timedelta = None):
-    # ── UNCHANGED — no DB involved here ──
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
@@ -266,7 +265,7 @@ def create_token(data: dict, expires_delta: timedelta = None):
 
 
 async def get_current_user(req: Request) -> dict:
-    print("Authenticating user for request:", req.url.path)
+    # print("Authenticating user for request:", req.url.path)
     token = req.cookies.get("at")
     
     if not token:

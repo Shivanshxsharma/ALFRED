@@ -6,7 +6,11 @@ import { Copy, Check } from "lucide-react";
 import { usechatStore } from '@/services/contextStrore'
 import { useShallow } from 'zustand/react/shallow';
 import  ToolBar  from './ToolBar';
-const Current_chat = ({ router }) => {
+import ChatBanner from './ChatBanner';
+
+
+
+const Current_chat = ({ router, isGuest, firstName }) => {
 
 
 
@@ -74,6 +78,12 @@ const [hoveredIndex, setHoveredIndex] = useState(null);
       setcopied(true)
       setTimeout(() => setcopied(false), 2000);
     }
+  }
+
+
+
+    if (Curr_Conversation_array.length === 0) {
+    return <ChatBanner isGuest={isGuest} firstName={firstName} />
   }
 
   return (

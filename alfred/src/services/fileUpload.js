@@ -33,11 +33,13 @@ function _doUpload(file, onProgress, isRetry) {
         }
 
       } else if (xhr.status === 401 && isRetry) {
-        // Refresh didn't help — actual auth failure
+        
         reject(new Error("Session expired — please log in again"))
 
-      } else {
-        reject(new Error(`Upload failed: ${xhr.status}`))
+      }
+      
+      else {
+        reject(new Error(`Upload failed: ${JSON.parse(xhr.responseText).detail || xhr.statusText}`))
       }
     })
 

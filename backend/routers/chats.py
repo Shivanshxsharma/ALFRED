@@ -39,6 +39,8 @@ async def new_chat(req: new_Chat, db=Depends(get_db), user: dict = Depends(get_c
 @router.get("/getChatHistory")
 async def get_chat_history(req: Request, skip: int, size: int, db=Depends(get_db), user: dict = Depends(get_current_user)):
     try:
+        if user.get("is_guest", False):
+            return {"items": [], "has_more": False}
         return await getChatHistory(userid=user["userid"], skip=skip, page_size=size, db=db)
     except HTTPException as he:
         raise he
@@ -46,6 +48,8 @@ async def get_chat_history(req: Request, skip: int, size: int, db=Depends(get_db
 @router.get("/getChatMessages")
 async def get_chat_messages(req: Request, chatId: str, db=Depends(get_db),user: dict = Depends(get_current_user)):
     try:
+        if user.get("is_guest", False):
+            return []
         return await getChatMessages(userid=user["userid"], chatId=chatId, db=db)
     except HTTPException as he:
         raise he

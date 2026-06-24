@@ -173,3 +173,9 @@ export async function saveProviderKey(provider, key) {
     throw error;
   }
 }
+
+
+
+export async function guestLogin() {
+  return api.post('/guest'); // adjust to however login/signup call your axios instance
+}

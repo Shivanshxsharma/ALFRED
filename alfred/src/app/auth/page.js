@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { AlertCircle, X, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { login, signup } from '@/services/authentication';
-import { getGoogleAuthUrl } from '@/services/fetch_info';
+import { getGoogleAuthUrl, guestLogin } from '@/services/fetch_info';
 import logo from './icon0.svg';
 
 const GoogleIcon = () => (
@@ -76,6 +76,20 @@ export default function AuthPage() {
     sessionStorage.setItem('oauth_state', state);
     window.location.href = url;
   };
+
+
+
+  const handleGuestAuth = async () => {
+  setIsSubmitting(true);
+  try {
+    await guestLogin(); // new function in services/authentication.js, hits POST /guest
+    router.push('/chats');
+  } catch (error) {
+    const msg = error.response?.data?.detail || 'Could not start guest session';
+    setErrors(p => ({ ...p, [isSignUp ? 'signup' : 'login']: msg }));
+    setIsSubmitting(false);
+  }
+};
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -152,6 +166,23 @@ export default function AuthPage() {
       Continue with Google
     </button>
   );
+
+  const GuestBtn = () => (
+  <button
+    onClick={handleGuestAuth}
+    disabled={isSubmitting}
+    className="w-full h-[37px] bg-violet-900/[0.06] border border-violet-700/20 rounded-lg
+      flex items-center justify-center gap-2 mb-[9px]
+      text-[12px] text-violet-300/50
+      hover:bg-violet-900/[0.12] hover:border-violet-700/35 hover:text-violet-300
+      disabled:opacity-40 disabled:cursor-not-allowed
+      transition-all duration-200"
+  >
+    Try as Guest →
+  </button>
+);
+
+
 
   // Shows a spinner + "Please wait" label while isSubmitting is true,
   // instead of the static label — this is the loader for "until tokens
@@ -283,6 +314,7 @@ export default function AuthPage() {
             />
             <OrLine />
             <GoogleBtn />
+            <GuestBtn />
             <SubmitBtn label="Login" allowed={loginAllowed} />
             <a href="#" className="block text-center text-[11px] text-violet-900/40 hover:text-violet-400/70 transition-colors">
               Forgot password?

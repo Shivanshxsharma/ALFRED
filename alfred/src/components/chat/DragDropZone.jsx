@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/drawer"
 import { ErrorBanner, useErrorBanner } from "@/components/feedback/ErrorBanner"
 
-export function DragDropZone({ children }) {
+export function DragDropZone({ children, guestMode  }) {
   const [dropMessage, setDropMessage] = React.useState(null)
   const [isDragging, setIsDragging] = React.useState(false)
   const dragCounter = React.useRef(0)
@@ -71,11 +71,11 @@ const handleDrop = (e) => {
   const existingNames = new Set(usechatStore.getState().files_array.map(f => f.name))
 
   droppedFiles.forEach(rawFile => {
-    // duplicate check
    if (existingNames.has(rawFile.name)) {
   showError(`"${rawFile.name}" is already uploaded`)
   return
 }
+
 
 
 const ext = rawFile.name.split(".").pop()?.toLowerCase() || ""
@@ -99,10 +99,12 @@ if (rawFile.size > MAX_SIZE) {
       usechatStore.getState().actions.updateFileProgress(id, 100)
       usechatStore.getState().actions.setFileServerData(id, res)
     })
-    .catch((err) => {
-      console.error("Error uploading file:", rawFile.name, err.message)
-      usechatStore.getState().actions.setFileError(id)
-    })
+      .catch((err) => {
+        const backendMessage = err.response?.data?.detail || err.message
+        showError(`${backendMessage}`)
+        console.error("Error uploading file:", err)
+        usechatStore.getState().actions.setFileError(id)
+      })
   })
 }
 

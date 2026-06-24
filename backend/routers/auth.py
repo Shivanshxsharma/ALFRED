@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, Response, Request
 import os
 from ..models.models import authenticate_User, create_User, OAuthCallbackRequest
@@ -103,3 +105,23 @@ async def logout_endpoint(res: Response, user: dict = Depends(get_current_user))
     res.delete_cookie("at", path="/")
     res.delete_cookie("rt", path="/")
     return {"ok": "Logged out successfully"}
+
+
+
+
+@router.post("/guest")
+async def guest_endpoint(res: Response):
+    import uuid
+    guest_id = f"guest_{uuid.uuid4().hex[:12]}"
+
+    access_token = create_token({
+        "userid": guest_id,
+        "email": None,
+        "is_guest": True,
+    }, expires_delta=timedelta(minutes=30))  # see note below on create_token signature
+
+    res.set_cookie(
+        key="at", value=access_token, httponly=False,
+        secure=True, samesite="none", max_age=30 * 60, path='/',
+    )
+    return {"message": "Guest session started", "is_guest": True}

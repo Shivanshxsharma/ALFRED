@@ -28,7 +28,6 @@ cloudinary.config(
     secure=True,
 )
 
-
 @router.post("/upload")
 async def upload_file(
     file: UploadFile,
@@ -36,8 +35,14 @@ async def upload_file(
     db=Depends(get_db),
     user: dict = Depends(get_current_user)
 ):
-    print(f"Received upload request for user_id: {user['userid']}, filename: {file.filename}")
     try:
+
+        if user.get("is_guest"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Guest users cannot upload files."
+            )
+
         ext = Path(file.filename).suffix.lstrip(".").lower()
         contents = await file.read()
 
@@ -56,10 +61,6 @@ async def upload_file(
         if duplicate_info is not None:
             return duplicate_info
 
-        # Write to a temp file just long enough to extract text and upload.
-        # tempfile.gettempdir() is always writable on Render, even though
-        # it's still ephemeral — that's fine here since we only need it
-        # for the duration of THIS request, not for later retrieval.
         suffix = Path(file.filename).suffix
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
             tmp.write(contents)
@@ -70,8 +71,6 @@ async def upload_file(
             char_count = len(text)
             needs_rag = char_count > 1000
 
-            # Upload to Cloudinary. resource_type="auto" lets Cloudinary
-            # detect PDFs/docs correctly instead of assuming an image.
             upload_result = cloudinary.uploader.upload(
                 tmp_path,
                 resource_type="auto",
@@ -82,15 +81,12 @@ async def upload_file(
             cloud_url = upload_result["secure_url"]
 
         finally:
-            # Always clean up the temp file, success or failure.
             os.remove(tmp_path)
 
         await store_file_doc(file_hash, file, cloud_url, user["userid"], needs_rag, char_count, text, db)
         print(f"File stored: {file.filename} -> {cloud_url}")
 
         if needs_rag:
-            # Pass text directly instead of a path — embed_and_index
-            # shouldn't need to re-read the file from disk at all now.
             background_tasks.add_task(embed_and_index, cloud_url, file_hash, text, db)
 
         return {
@@ -101,6 +97,9 @@ async def upload_file(
             "needs_rag": needs_rag,
             "char_count": char_count
         }
+
+    except HTTPException:
+        raise  # let intentional HTTPExceptions (like the 403 above) pass through unchanged
 
     except Exception as e:
         print(f"Error uploading file: {e}")

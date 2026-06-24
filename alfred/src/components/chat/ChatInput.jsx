@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from "react"
 import { CircleArrowUp, StopCircle } from "lucide-react"
-import { useChatActions, usechatStore } from "@/services/contextStrore"
+import { useChatActions, usechatStore, user_contextStore } from "@/services/contextStrore"
 import { cn } from "@/lib/utils"
 import VioletButton from "@/components/common/VioletButton"
 import UploadButton from "./UploadButton"
@@ -13,9 +13,14 @@ import { uploadFile } from "@/services/fileUpload"
 import { Toggle } from "radix-ui"
 import ToolsContextMenu from "./ToggleTools"
 import { ModelPicker } from "@/components/models/Model_picker"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip"
 
 const MAX_HEIGHT = 200
-
 
 export default function ChatInput({ router }) {
     const { addFile, updateFileProgress, setFileError ,toggleTool ,setFileServerData, stopStreaming } = usechatStore.getState().actions;
@@ -23,6 +28,7 @@ export default function ChatInput({ router }) {
   const files_array=usechatStore(useShallow((state) => state.files_array));
   const toggleTools = usechatStore(useShallow((state) => state.toggleTools));
   const isStreaming = usechatStore(useShallow((state) => state.isStreaming));
+  const isGuest = user_contextStore(useShallow((state) => state.is_guest));
 
   const { submitHandler } = useChatActions()
   const [allowInput, setAllowInput] = useState(false)
@@ -78,20 +84,35 @@ export default function ChatInput({ router }) {
       {/* Bottom toolbar */}
       <div className="rounded-xl w-[98%] h-9 sm:h-12 absolute bottom-1 flex justify-between items-center bg-background p-0.5 sm:p-1.5">
         <div className="w-[20%] h-full gap-3 flex items-center">
-        <UploadButton
-          onFile={(rawFile) => {
-            const id = addFile(rawFile)   
-            uploadFile({ raw: rawFile }, (percent) => {
-              updateFileProgress(id, percent)
-            })
-              .then((res) => {
-                updateFileProgress(id, 100)
-                console.log("File uploaded successfully:", res)
-                setFileServerData(id, res)
+        {isGuest ? (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex cursor-not-allowed opacity-50">
+                  <UploadButton onFile={() => {}} disabled />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="bg-red-950 border border-red-800 text-red-300">
+                File uploads aren't available in guest mode — sign up to use this feature
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : (
+          <UploadButton
+            onFile={(rawFile) => {
+              const id = addFile(rawFile)   
+              uploadFile({ raw: rawFile }, (percent) => {
+                updateFileProgress(id, percent)
               })
-              .catch(() => setFileError(id))
-          }}
-        />
+                .then((res) => {
+                  updateFileProgress(id, 100)
+                  console.log("File uploaded successfully:", res)
+                  setFileServerData(id, res)
+                })
+                .catch(() => setFileError(id))
+            }}
+          />
+        )}
 
         <ToolsContextMenu  toggleTools={toggleTools}  toggleTool={toggleTool}/>
         <ModelPicker  />

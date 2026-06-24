@@ -15,28 +15,31 @@ from ..services.abort.abort import _cancel_events
 
 router = APIRouter(tags=["stream"], dependencies=[Depends(get_current_user)])
 
-
 @router.post("/stream")
-async def stream_endpoint(req: add_to_Chat, db=Depends(get_db), pg_db=Depends(get_pg_db), user: dict = Depends(get_current_user)):
+async def stream_endpoint(req: add_to_Chat, 
+                          db=Depends(get_db), 
+                          pg_db=Depends(get_pg_db), 
+                          user: dict = Depends(get_current_user)):
     try:
-
         query = req.prompt.content
         chatId = req.chatId
         is_new_chat = req.is_new_chat
         user_id = user["userid"]
+        is_guest = user.get("is_guest", False)
         metadata = req.prompt.meta_data
 
-        await add_to_Db(
-            is_new_chat, user_id, chatId,
-            {"role": "human", "content": query, "meta_data": metadata.model_dump()},
-            db
-        )
+        if not is_guest:
+            await add_to_Db(
+                is_new_chat, user_id, chatId,
+                {"role": "human", "content": query, "meta_data": metadata.model_dump()},
+                db
+            )
 
         cancel_event = asyncio.Event()
         _cancel_events[chatId] = cancel_event
 
         return StreamingResponse(
-            stream_response(query, chatId, db, pg_db, metadata, cancel_event, user_id),
+            stream_response(query, chatId, db, pg_db, metadata, cancel_event, user_id, is_guest=is_guest),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
@@ -52,11 +55,6 @@ async def stream_endpoint(req: add_to_Chat, db=Depends(get_db), pg_db=Depends(ge
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error setting up stream: {str(e)}"
         )
-
-
-
-
-
 
 
 @router.post("/abort/{chatId}")
