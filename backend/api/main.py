@@ -4,6 +4,8 @@ from fastapi import FastAPI
 from fastapi.concurrency import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.routers import health
+
 from ..core.pg_database import init_postgres
 from ..core.config import connect_db, close_db, get_db, get_sync_client
 from ..services.wiki_memory.wiki_db import init_wiki, ensure_wiki_indexes, wiki_embed_fn
@@ -50,3 +52,4 @@ app.include_router(stream.router)
 app.include_router(files.router)
 app.include_router(session.router)
 app.include_router(api_keys.router)
+app.include_router(health.router)  # Add the health router
