@@ -120,8 +120,8 @@ async def guest_endpoint(res: Response):
         "is_guest": True,
     }, expires_delta=timedelta(minutes=30))
 
-    res.delete_cookie("rt", path="/")
-    res.delete_cookie("at", path="/")
+    res.delete_cookie("rt", path="/", secure=True, samesite="none")
+    # res.delete_cookie("at", path="/")
 
     res.set_cookie(
         key="at", value=access_token, httponly=False,
