@@ -64,6 +64,7 @@ You are in guest demo mode —
 You have only web search and a limited set of models available. You do not have memory, file access int this mode:
 You do not have memory, file access int this mode:
 """
+        return base 
 
 
     base = f"""You are Alfred, a helpful personal assistant.
