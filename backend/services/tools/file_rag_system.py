@@ -42,19 +42,23 @@ async def vector_search(
 async def read_file(query: str, file_hashes: list[str]) -> str:
     """
     Retrieve relevant content from the user's uploaded files using semantic search.
-    
-    You MUST call this tool if:
-    - The user asks anything about their uploaded documents or files
-    - No file context has been provided yet for this query
-    - The provided context is incomplete or insufficient
-    
-    Do NOT answer questions about file contents from memory alone.
-    
+
+    Call this tool only when relevant content has NOT already been retrieved and shown
+    earlier in this conversation. Specifically, call it when:
+    - No file context has been provided yet for this query, OR
+    - Earlier retrieved content for these files does not fully and accurately answer
+      the current question (including when you are uncertain whether it does)
+
+    Do NOT call this tool if the current question is already fully answered by content
+    already retrieved earlier in this conversation — answer directly from that instead.
+
+    Do NOT answer questions about file contents from memory or guesswork when no
+    retrieved content covers them — call this tool instead.
+
     Args:
         query:       focused search string matching what the user wants to find
         file_hashes: list of file hashes identifying which files to search
     """
-    # print(f"[read_file] Called with query: {query[:50]} and file_hashes: {file_hashes}")
     chunks = await vector_search(query, file_hashes, top_k=5)
 
     if not chunks:

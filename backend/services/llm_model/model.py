@@ -142,7 +142,6 @@ Supported types: line, bar, area, pie, scatter.
 
 
 def build_file_context(rag_files: list) -> str:
-    """Build the file context block injected after the system prompt."""
     if not rag_files:
         return ""
 
@@ -153,20 +152,32 @@ def build_file_context(rag_files: list) -> str:
 FILE CONTEXT AVAILABLE:
 The user has uploaded: {', '.join(file_names)}.
 
-Before answering, check: has this exact topic/question already been answered using retrieved 
-content earlier in this conversation? 
+Before answering any question that touches these files, follow this sequence:
 
-- If YES — answer directly from that previously retrieved content. Do not call read_file again.
-- If NO — or if this question asks about something not yet covered, call read_file with:
-    query = the user's current question
-    file_hashes = {file_hashes}
-NEVER mention chunk numbers, file_hashes, slugs, retrieval mechanics, or tool names in your response to the user — answer naturally as if you simply knew the information.
-Never answer a file-related question from guesswork. If you're unsure whether prior retrieved 
-content covers this question, call read_file rather than assume.
+1. SCAN the conversation history first for content already retrieved via read_file that is
+   relevant to the current question — even if the current question is phrased differently
+   from how it was originally asked.
+
+2. DECIDE coverage:
+   - FULLY COVERED: prior retrieved content contains everything needed to answer completely
+     and accurately. -> Answer directly from that content. Do NOT call read_file again.
+   - PARTIALLY COVERED or UNCOVERED: prior retrieved content is missing, incomplete, stale,
+     or you are not fully certain it answers this specific question. -> Call read_file with:
+       query = the user's current question
+       file_hashes = {file_hashes}
+
+3. DEFAULT TO read_file ON ANY UNCERTAINTY. If there is doubt about whether step 2 counts as
+   "fully covered," that doubt itself means it is not fully covered — call read_file. Never
+   answer a file-related question from guesswork or from a partial match, even if it seems
+   close enough.
+
+4. A prior message saying no relevant content was found is NOT confirmation that the answer
+   doesn't exist in the files — it only means that specific search came up empty. Treat it as
+   uncovered, not as a settled negative answer.
+
+NEVER mention chunk numbers, file_hashes, slugs, retrieval mechanics, or tool names in your
+response to the user — answer naturally as if you simply knew the information.
 """
-
-    
-
     
 
 # ---------------------------------------------------------------------------
@@ -363,7 +374,7 @@ async def chat_node(state: chatState, config: RunnableConfig) -> dict:
             active_tools.append(read_file)
  
         file_context = build_file_context(rag_files)
-
+        print(active_tools)
         wiki_map = state.get("wiki_map", "")
  
         final_messages, image_context = build_final_messages(
@@ -375,9 +386,11 @@ async def chat_node(state: chatState, config: RunnableConfig) -> dict:
 
         
         full_system_prompt = (
-            get_system_prompt(is_guest) + ((file_context + image_context + "\n\n" + wiki_map) if is_guest else "")
+            get_system_prompt(is_guest) + ((file_context + image_context + "\n\n" + wiki_map) if not is_guest else "")
         )
         final_messages[0] = SystemMessage(content=full_system_prompt)
+
+        # print(full_system_prompt)
  
 
         llm = config["configurable"].get("model")
@@ -494,6 +507,7 @@ async def stream_response(
         "tools":          toggled_tools,
         "images_uploaded": images_uploaded,
         "files_uploaded":  files_uploaded,
+        "is_guest": is_guest,
     }
 
     model    = get_chatModel()

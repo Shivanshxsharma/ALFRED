@@ -111,14 +111,38 @@ MODEL_REGISTRY = {
                 "thinking": False, "vision": False,
                 "supports_tools": True, "supports_temperature": True,
             },
-            "google/gemma-3-12b:free": {
+            "google/gemma-4-26b-a4b-it:free": {
                 "context": "131K", "best_for": "Lightweight",
                 "thinking": False, "vision": False,
                 "supports_tools": False, "supports_temperature": True,
             },
+            "nvidia/nemotron-3-ultra-550b-a55b:free": {
+                "context": "131K", "best_for": "General",
+                "thinking": True, "vision": False,
+                "supports_tools": True, "supports_temperature": True,
+            },
         },
     },
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def get_provider_for_model(model_id: str) -> str | None:
