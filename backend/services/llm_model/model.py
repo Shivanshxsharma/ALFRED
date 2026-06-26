@@ -374,7 +374,7 @@ async def chat_node(state: chatState, config: RunnableConfig) -> dict:
             active_tools.append(read_file)
  
         file_context = build_file_context(rag_files)
-        print(active_tools)
+        # print(active_tools)
         wiki_map = state.get("wiki_map", "")
  
         final_messages, image_context = build_final_messages(
