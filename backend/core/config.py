@@ -34,7 +34,6 @@ async def connect_db() -> None:
     await db.wiki_pages.create_index("slug")
     await db.wiki_categories.create_index("userId")
     await db.file_chunks.create_index("file_hash")
-    await db.files.drop_indexes() 
     await db.files.create_index(
         [("file_hash", 1), ("user_id", 1)],
         unique=True
