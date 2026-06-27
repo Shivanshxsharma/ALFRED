@@ -53,6 +53,8 @@ def extract_text(path: str) -> str:
 
 
 
+_cache: dict[tuple[str, str], str] = {}
+
 async def store_file_doc(file_hash, file, path, user_id, needs_rag, char_count, text, db):
     file_doc = {
         "file_hash": file_hash,
@@ -65,21 +67,17 @@ async def store_file_doc(file_hash, file, path, user_id, needs_rag, char_count, 
         "embedding_status": "pending" if needs_rag else "not_needed",
         "created_at": datetime.now()
     }
-    
+
     result = await db.files.update_one(
-        {"file_hash": file_hash, "user_id": user_id},  # match condition
-        {"$setOnInsert": file_doc},                     # only write if NEW doc
+        {"file_hash": file_hash, "user_id": user_id},
+        {"$setOnInsert": file_doc},
         upsert=True
     )
-    
-    # Cache only if we actually inserted (not a race-condition duplicate)
+
     if result.upserted_id:
-        _cache[file_hash] = text if not needs_rag else None
-    
-    return result.upserted_id is not None  # True = fresh insert, False = already existed
+        _cache[(file_hash, user_id)] = text if not needs_rag else None
 
-
-
+    return result.upserted_id is not None
 
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 200
@@ -88,7 +86,7 @@ CHUNKS_COLLECTION = "file_chunks"
 ATLAS_VECTOR_INDEX = "file_chunks_index"   
 embeddings_model = GoogleGenerativeAIEmbeddings(model=EMBEDDING_MODEL , max_retries=1)
 BATCH_SIZE = 20
-_cache: dict[str, str] = {}  
+
 
 
 
@@ -202,17 +200,20 @@ async def embed_and_index(
 
 
 
-async def get_file_text(file_hash: str, db) -> str | None:
-    if file_hash in _cache:
-        return _cache[file_hash]
-    
-    # DB query only on cache miss
+
+
+
+async def get_file_text(file_hash: str, user_id: str, db) -> str | None:
+    key = (file_hash, user_id)
+    if key in _cache:
+        return _cache[key]
+
     doc = await db.files.find_one(
-        {"file_hash": file_hash},
+        {"file_hash": file_hash, "user_id": user_id},
         {"full_text": 1}
     )
     if doc and doc.get("full_text"):
-        _cache[file_hash] = doc["full_text"]   # cache it
+        _cache[key] = doc["full_text"]
         return doc["full_text"]
-    
+
     return None

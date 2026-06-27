@@ -40,6 +40,10 @@ async def connect_db() -> None:
         unique=True
     )
 
+    indexes = await db.files.list_indexes().to_list(length=None)
+    for idx in indexes:
+     print(idx)
+
     await client.admin.command("ping")
     print(f"[DB] Connected to MongoDB: {DATABASE_NAME}")
 

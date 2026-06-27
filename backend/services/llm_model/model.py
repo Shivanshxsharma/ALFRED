@@ -260,7 +260,7 @@ async def router_node(state: chatState,config: RunnableConfig) -> dict:
     for f in files_uploaded:
         if not f.get("needs_rag"):
             try:
-                file_text = await get_file_text(f["file_hash"], get_db())
+                file_text = await get_file_text(f["file_hash"], user_id, get_db())
                 if file_text:
                     small_texts.append({f["name"]: file_text})
             except Exception as e:
