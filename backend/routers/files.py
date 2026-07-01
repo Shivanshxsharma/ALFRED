@@ -48,7 +48,7 @@ async def upload_file(
 
         if ext in IMAGE_EXTENSIONS:
             b64 = base64.b64encode(contents).decode("utf-8")
-            print(f"Image uploaded: {file.filename}")
+            
             return {
                 "original_name": file.filename,
                 "type": "image",
@@ -68,6 +68,7 @@ async def upload_file(
 
         try:
             text = extract_text(tmp_path)
+            
             char_count = len(text)
             needs_rag = char_count > 1000
 
@@ -84,7 +85,7 @@ async def upload_file(
             os.remove(tmp_path)
 
         await store_file_doc(file_hash, file, cloud_url, user["userid"], needs_rag, char_count, text, db)
-        print(f"File stored: {file.filename} -> {cloud_url}")
+        
 
         if needs_rag:
             background_tasks.add_task(embed_and_index, cloud_url, file_hash, text, db)

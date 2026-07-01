@@ -7,7 +7,7 @@ import Markdown from './Markdown'
 import ToolBar from './ToolBar'
 import MessageFileChips from './FileChip'
 
-const ChatBubble = ({ index, lastindex, role, content, meta_data }) => {
+const ChatBubble = ({ index, lastindex, role, content, meta_data, tool_calls   }) => {
   const isStreaming = usechatStore(useShallow((state) => state.isStreaming));
   const tool_array = usechatStore(useShallow((state) => state.tool_array));
   const [displayText, setDisplayText] = useState("");
@@ -36,7 +36,7 @@ const ChatBubble = ({ index, lastindex, role, content, meta_data }) => {
     }
   }, [isLastMessage]);
 
-  const savedTools = meta_data?.tool_calls?.map(t => ({
+  const savedTools = tool_calls.tool_calls?.map(t => ({
     name: t.tool_name,
     input: t.tool_input,
     status: "done",

@@ -22,7 +22,6 @@ def compute_hash(content):
 async def check_duplicate(file,file_hash, db, user_id):
     existing = await db.files.find_one({"file_hash": file_hash, "user_id": user_id})
     if existing:
-        print(f"[check_duplicate] Duplicate file detected: {file.filename} (hash: {file_hash})")
         return {
             "name": file.filename,
             "path": existing["path"],
@@ -31,7 +30,6 @@ async def check_duplicate(file,file_hash, db, user_id):
             "char_count": existing["char_count"]
         }
     else :
-        print(f"[check_duplicate] No duplicate found for file: {file.filename} (hash: {file_hash})")
         return None
 
 
@@ -41,16 +39,13 @@ md_converter = MarkItDown()
 def extract_text(path: str) -> str:
 
     ext = path.split(".")[-1].lower()
-    
     if ext in ("pdf", "docx", "doc", "pptx", "xlsx"):
         result = md_converter.convert(path)
-
         return result.text_content
     
     elif ext in ("txt", "md"):
         with open(path) as f:
             return f.read()
-    
     return ""
 
 
@@ -69,7 +64,7 @@ async def store_file_doc(file_hash, file, path, user_id, needs_rag, char_count, 
         "embedding_status": "pending" if needs_rag else "not_needed",
         "created_at": datetime.now()
     }
-    print(f"[store_file_doc] Storing file document: {file.filename} (hash: {file_hash})")
+
     result = await db.files.update_one(
         {"file_hash": file_hash, "user_id": user_id},
         {"$setOnInsert": file_doc},
@@ -114,7 +109,7 @@ async def embed_and_index(
     db,
 ) -> None:
     try:
-        print(f"[embed_and_index] Starting indexing for {path}")
+        print(f"[embed_and_index] Starting indexing for ")
 
         # ── 1. re-upload guard ──────────────────────────────────────────────
         fetch_result = await asyncio.to_thread(
@@ -214,6 +209,7 @@ async def get_file_text(file_hash: str, user_id: str, db) -> str | None:
         {"file_hash": file_hash, "user_id": user_id},
         {"full_text": 1}
     )
+    print(f"[get_file_text] Fetched document for {file_hash}: {doc}")
     if doc and doc.get("full_text"):
         _cache[key] = doc["full_text"]
         return doc["full_text"]

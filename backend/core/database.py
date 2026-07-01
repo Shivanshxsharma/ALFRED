@@ -21,14 +21,16 @@ async def add_to_Db(new_chat: bool, user_id: str, chatId: str, prompt: dict, db)
         role = prompt["role"]
         content = prompt["content"]
         meta_data = prompt.get("meta_data", None)
+        tool_calls = prompt.get("tool_calls", None)
 
-        # single message document — always inserted
+       
         message_doc = {
             "chatId": chatId,
             "userId": user_id,
             "role": role,
             "content": content,
             "meta_data": meta_data,
+            "tool_calls": tool_calls,
             "created_at": datetime.now(timezone.utc)
         }
 
@@ -37,9 +39,9 @@ async def add_to_Db(new_chat: bool, user_id: str, chatId: str, prompt: dict, db)
 
             new_chat_dict = {
                 "chatId": chatId,
-                "userId": user_id,       # ← was missing
+                "userId": user_id,       
                 "title": title,
-                "message_count": 1,      # ← starts at 1, first message
+                "message_count": 1,      
                 "wiki_summarized_count": 0,
                 "created_at": datetime.now(timezone.utc),
                 "updated_at": datetime.now(timezone.utc),
@@ -52,7 +54,7 @@ async def add_to_Db(new_chat: bool, user_id: str, chatId: str, prompt: dict, db)
                 {"chatId": chatId},
                 {
                     "$inc": {"message_count": 1},
-                    "$set": {"updated_at": datetime.now(timezone.utc)}  # ← was missing
+                    "$set": {"updated_at": datetime.now(timezone.utc)}  
                 }
             )
 

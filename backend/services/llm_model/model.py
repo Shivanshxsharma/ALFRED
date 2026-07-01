@@ -238,10 +238,9 @@ async def router_node(state: chatState,config: RunnableConfig) -> dict:
     files_uploaded = state.get("files_uploaded", [])
     tools_state= state.get("tools", {})
     updates = {}
-
+    user_id = config["configurable"].get("user_id")
     if tools_state.get("remembring_enabled"):
         try:
-            user_id = config["configurable"].get("user_id")
             if user_id:
                 wiki_ctx = await build_wiki_context_block(user_id)
                 if wiki_ctx:
@@ -261,11 +260,12 @@ async def router_node(state: chatState,config: RunnableConfig) -> dict:
         if not f.get("needs_rag"):
             try:
                 file_text = await get_file_text(f["file_hash"], user_id, get_db())
+                
                 if file_text:
                     small_texts.append({f["name"]: file_text})
             except Exception as e:
                 print(f"[router_node] Failed to fetch text for '{f['name']}': {e}")
-
+    
     updates["persisted_files"] = files_uploaded
     
     if small_texts:
@@ -274,6 +274,8 @@ async def router_node(state: chatState,config: RunnableConfig) -> dict:
             for item in small_texts
             for name, text in item.items()
         )
+
+    
 
     return updates
 
@@ -300,9 +302,10 @@ async def retrieval_node(state: chatState) -> dict:
 
     try:
         files_uploaded = state.get("files_uploaded", [])
+        print(f"[retrieval_node] Files uploaded: {files_uploaded}")
         rag_files = [f for f in files_uploaded if f.get("needs_rag")]
         injected_file_text = state.get("injected_file_text", "")
-
+        
         non_system = [m for m in state["messages"] if not isinstance(m, SystemMessage)]
         last_human = non_system[-1]
         query = (
@@ -319,11 +322,11 @@ async def retrieval_node(state: chatState) -> dict:
                 "injected_file_text": injected_file_text + "\nNo relevant content found in the uploaded files.",
                 "pre_rag_files": rag_files,
             }
-
+        
         rag_context = "\n\n".join(
             f"[Chunk {c['chunk_index']}]\n{c['text']}" for c in chunks
         )
-        # print(f"RAG CONTEXT: {rag_context}")
+        print(f"RAG CONTEXT: {rag_context}")
 
         return {
             "injected_file_text": injected_file_text + rag_context,
@@ -355,7 +358,7 @@ async def chat_node(state: chatState, config: RunnableConfig) -> dict:
         images_uploaded = state.get("images_uploaded", [])
         injected_file_text = state.get("injected_file_text", "")
         rag_files          = state.get("pre_rag_files", [])
- 
+        print (rag_files)
         is_guest = state.get("is_guest", False)
         TOOL_MAP = {
             "web_search_enabled":    search_tool,
@@ -561,7 +564,7 @@ async def stream_response(
                     "role":      "ai",
                     "content":   finalres,
                     "meta_data": model_metadata.model_dump(),
-                    "toolcalls": tool_data.model_dump(),
+                    "tool_calls": tool_data.model_dump(),
                 },
                 db,
             )
@@ -599,7 +602,7 @@ async def stream_response(
                         "role":      "ai",
                         "content":   finalres,
                         "meta_data": model_metadata.model_dump(),
-                        "toolcalls": tool_data.model_dump(),
+                        "tool_calls": tool_data.model_dump(),
                     },
                     db,
                 )
